@@ -262,23 +262,24 @@ void loop() {
           }
         }
       }
-    } else if (line.equals("move_x_start")) {
-      stepper_x.moveTo(40000);
-      stepper_x.setSpeed(1000);
-      while (true) {
-        stepper_x.runSpeedToPosition();
-        if (Serial.available()) {
-          String line2 = Serial.readStringUntil(';');
-          if (line2.equals("stop")) {
-            stepper_z.stop();
-            break;
-          } else if (stepper_x.currentPosition() == 30000) {
-            Serial.println("move_x_end");
-            stepper_x.stop();
-            break;
-          }
-        }
-      }
+      //    } else if (line.equals("move_x_start")) {
+      //      stepper_x.moveTo(40000);
+      //      stepper_x.setSpeed(1000);
+      //      while (true) {
+      //        stepper_x.runSpeedToPosition();
+      //        if (Serial.available()) {
+      //          String line2 = Serial.readStringUntil(';');
+      //          if (line2.equals("stop")) {
+      //            stepper_z.stop();
+      //            break;
+      //          } else if (stepper_x.currentPosition() == 30000) {
+      //            Serial.println("move_x_end");
+      //            stepper_x.stop();
+      //            break;
+      //          }
+      //        }
+      //      }
+      //    }
     }
   }
 }
