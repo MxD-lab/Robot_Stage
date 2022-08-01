@@ -1,6 +1,6 @@
 # client
 # 受信側
-# 先にこっち（受信側）を実行してから送信側のコードを実行します．
+# あとからこっち（受信側）を実行してから送信側のコードを実行します．
 
 
 
@@ -133,7 +133,7 @@ def morter_move():
                     print("carivration end")
                     break
 
-            elif road_Z > 5:
+            elif road_Z >= 5:
                 ser.write(bytes("stop;",'utf-8'))
                 print("em end")
                 end_flag = 1
@@ -171,14 +171,14 @@ def morter_move():
                 #     break
 
             #過剰な圧力が加わったら            
-            elif road_Z > 5: 
+            elif road_Z >= 5: 
                 ser.write(bytes("stop;",'utf-8'))
                 print("emfin")
                 end_flag = 1
                 break
             
             #指定の圧力
-            elif 1.5 > road_Z > 0.5:
+            elif 1.5 >= road_Z >= 0.5:
                 ser.write(bytes("sp-Z;", 'utf-8'))
                 print("setZ")
                 # break
@@ -188,7 +188,7 @@ def morter_move():
         except KeyboardInterrupt:
             break
     
-    """
+    
     time.sleep(1)
     #ここからX軸をうごかす
     ser.write(bytes("move_x_start;",'utf-8'))
@@ -203,14 +203,14 @@ def morter_move():
                     print("Congratulation!!")
                     break
 
-            elif 1.2 > road_Z > 0.8:
-                ser.write(bytes("no-plom;", 'utf-8'))
+            # elif 1.2 > road_Z > 0.8:
+            #     ser.write(bytes("no-plom;", 'utf-8'))
 
-            elif 1.2 < road_Z:
-                ser.write(bytes("adjust_Z-;", 'utf-8'))
+            # elif 1.2 < road_Z:
+            #     ser.write(bytes("adjust_Z-;", 'utf-8'))
 
-            elif 0.8 > road_Z:
-                ser.write(bytes("adjust_Z+;", 'utf-8'))
+            # elif 0.8 > road_Z:
+            #     ser.write(bytes("adjust_Z+;", 'utf-8'))
 
             elif road_Z > 5: 
                 ser.write(bytes("stop;",'utf-8'))
@@ -220,10 +220,10 @@ def morter_move():
 
         except KeyboardInterrupt:
             break
-    """
+    
 
     
-    time.sleep(5)
+    time.sleep(10)
     ser.close()
     end_flag = 1
     
@@ -255,8 +255,8 @@ if __name__ == '__main__':
     global end_flag #-1がキャリブレーションモード、0が計測モード、1が終了モード
 
     np.set_printoptions(precision=2)
-    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server.bind((src_ip_addr,src_port))
+    # server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # server.bind((src_ip_addr,src_port))
     morter = threading.Thread(target=morter_move)
     f = open(make_new_file_name() + ".csv",'ab')
     
@@ -288,8 +288,8 @@ if __name__ == '__main__':
     #     print("mada")
 
     end_flag = -1
-    # server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # server.bind((src_ip_addr,src_port))
+    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server.bind((src_ip_addr,src_port))
 
     
     msg, addr = server.recvfrom(buffer_size)
@@ -326,7 +326,7 @@ if __name__ == '__main__':
             # print(road_sell_data.T)
 
             road_Z = road_sell_data[2]
-            print(road_Z)
+            # print(road_Z)
             road_X = road_sell_data[0]
             road_Y = road_sell_data[1]
 
