@@ -1,6 +1,7 @@
 /*
   2022/07/29（金）記入者：船橋佑｜xyzのキャリブレーション後、z軸の計測のみ行う。その際、計測してからの反映が
  serialだと遅いので、計測時のみ2000pulse/秒ではなく100pulse/秒でおこなう。
+  2022/08/01（月）クラス化したよ
 */
 
 #include <AccelStepper.h>
@@ -97,23 +98,42 @@ void stop_check() {
   }
 }
 
-void run_speed(AccelStepper x,bool y){
+void run_speed(AccelStepper z){
   while (true) { //モーターが端っこに来るまで動く
-    x.runSpeed();
+    z.runSpeed();
     stop_check();
-    if (y) {
+    Serial.print(islimit0_x);
+    Serial.print(islimit1_x);
+    Serial.print(islimit0_y);
+    Serial.print(islimit1_y);
+    Serial.print(islimit0_z);
+    Serial.println(islimit1_z);
+    if (islimit0_x==true|islimit1_x==true|islimit0_y==true|islimit1_y==true|islimit0_z==true|islimit1_z==true) {
+      Serial.println("fogefoge2");
       break;
     }
   }
-  x.stop(); //端まで来たら止まる
-  x.setCurrentPosition(0); //0ポジ設定
-  y = false;
+  z.stop(); //端まで来たら止まる
+  z.setCurrentPosition(0); //0ポジ設定
+  islimit0_x =false;
+  islimit1_x =false;
+  islimit0_y =false;
+  islimit1_y =false;
+  islimit0_z =false;
+  islimit1_z =false;
+  Serial.println("fogefoge3");
 }  
 
 
 void move_to(AccelStepper x,int y,int z){
   x.moveTo(y);
   x.setSpeed(z);
+  Serial.print(islimit0_x);
+  Serial.print(islimit1_x);
+  Serial.print(islimit0_y);
+  Serial.print(islimit1_y);
+  Serial.print(islimit0_z);
+  Serial.println(islimit1_z);
   while (true) {
     x.runSpeedToPosition();
     stop_check();
@@ -121,6 +141,12 @@ void move_to(AccelStepper x,int y,int z){
       break;
     }
   }
+  islimit0_x =false;
+  islimit1_x =false;
+  islimit0_y =false;
+  islimit1_y =false;
+  islimit0_z =false;
+  islimit1_z =false;
 }  
 
 
@@ -152,7 +178,7 @@ void setup() {
   stepper_x.setMaxSpeed(2000);  // 脱調防止
   stepper_x.setSpeed(CARIVSPEED);
   stepper_y.setMaxSpeed(2000);  // 脱調防止
-  stepper_y.setSpeed(CARIVSPEED);
+  stepper_y.setSpeed(-2000);
   stepper_z.setMaxSpeed(2000);  // 脱調防止
   stepper_z.setSpeed(CARIVSPEED);
 
@@ -167,19 +193,21 @@ void setup() {
     }
 
     if(serial_flag1){
-      run_speed(stepper_z, islimit0_z);
+      run_speed(stepper_z);
       delay(1000);     
       serial_flag1 = false;
       Serial.println("Z_end");
       break;
     }else if(serial_flag2){
-      run_speed(stepper_z, islimit0_z);
-      delay(1000);     
-      run_speed(stepper_x, islimit0_x);
+      run_speed(stepper_z);
+      delay(1000);  
+      run_speed(stepper_x);
       delay(1000);
       move_to(stepper_x, 25000, 2000);
       delay(1000);
-      run_speed(stepper_y, islimit0_y);
+      Serial.println("foge1");
+      run_speed(stepper_y);
+      Serial.println("foge2");
       delay(1000);
       move_to(stepper_y, 25000, 2000);
       delay(1000);      
