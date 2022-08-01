@@ -153,8 +153,12 @@ void setup() {
             break;
           }
         }
+        stepper_z.stop();
+        islimit0_z = islimit1_z = false;
+        delay(1000);
       }
-      
+
+
       else if (line.equals("cariv_start")) {
         Serial.flush();
 
@@ -240,9 +244,12 @@ void loop() {
     String line = Serial.readStringUntil(';');
     if (line.equals("move_z_start")) {
       stepper_z.moveTo(40000);
-      stepper_z.setSpeed(1000);
+      stepper_z.setSpeed(2000);
       while (true) {
         stepper_z.runSpeedToPosition();
+        if (stepper_z.currentPosition() > 17000) {
+          stepper_z.setSpeed(100);
+        }
         //        stop_check();
         if (Serial.available()) {
           String line2 = Serial.readStringUntil(';');
@@ -251,12 +258,27 @@ void loop() {
           } else if (line2.equals("sp-Z")) {
             Serial.println("move_z_end");
             stepper_z.stop();
-//            break;
+            break;
           }
         }
       }
-      //    } else if (line.equals("cu_end")) {
-      //      up_Z();
+    } else if (line.equals("move_x_start")) {
+      stepper_x.moveTo(40000);
+      stepper_x.setSpeed(1000);
+      while (true) {
+        stepper_x.runSpeedToPosition();
+        if (Serial.available()) {
+          String line2 = Serial.readStringUntil(';');
+          if (line2.equals("stop")) {
+            stepper_z.stop();
+            break;
+          } else if (stepper_x.currentPosition() == 30000) {
+            Serial.println("move_x_end");
+            stepper_x.stop();
+            break;
+          }
+        }
+      }
     }
   }
 }
