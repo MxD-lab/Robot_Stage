@@ -98,55 +98,29 @@ void stop_check() {
   }
 }
 
-void run_speed(AccelStepper z){
+void run_speed(AccelStepper axis){
   while (true) { //モーターが端っこに来るまで動く
-    z.runSpeed();
+    axis.runSpeed();
     stop_check();
-    Serial.print(islimit0_x);
-    Serial.print(islimit1_x);
-    Serial.print(islimit0_y);
-    Serial.print(islimit1_y);
-    Serial.print(islimit0_z);
-    Serial.println(islimit1_z);
     if (islimit0_x==true|islimit1_x==true|islimit0_y==true|islimit1_y==true|islimit0_z==true|islimit1_z==true) {
-      Serial.println("fogefoge2");
       break;
     }
   }
-  z.stop(); //端まで来たら止まる
-  z.setCurrentPosition(0); //0ポジ設定
-  islimit0_x =false;
-  islimit1_x =false;
-  islimit0_y =false;
-  islimit1_y =false;
-  islimit0_z =false;
-  islimit1_z =false;
-  Serial.println("fogefoge3");
+  axis.stop(); //端まで来たら止まる
+  axis.setCurrentPosition(0); //0ポジ設定
 }  
 
 
-void move_to(AccelStepper x,int y,int z){
-  x.moveTo(y);
-  x.setSpeed(z);
-  Serial.print(islimit0_x);
-  Serial.print(islimit1_x);
-  Serial.print(islimit0_y);
-  Serial.print(islimit1_y);
-  Serial.print(islimit0_z);
-  Serial.println(islimit1_z);
+void move_to(AccelStepper axis,int distance,int pulse){
+  axis.moveTo(distance);
+  axis.setSpeed(pulse);
   while (true) {
-    x.runSpeedToPosition();
+    axis.runSpeedToPosition();
     stop_check();
-    if (x.currentPosition() == y) {
+    if (axis.currentPosition() == distance) {
       break;
     }
   }
-  islimit0_x =false;
-  islimit1_x =false;
-  islimit0_y =false;
-  islimit1_y =false;
-  islimit0_z =false;
-  islimit1_z =false;
 }  
 
 
@@ -186,8 +160,10 @@ void setup() {
     if (Serial.available()) {
       String line = Serial.readStringUntil(';');
       if (line.equals("up_Z")) {
+        Serial.flush();
         serial_flag1 = true;
       }else if(line.equals("cariv_start")){
+        Serial.flush();
         serial_flag2 = true;
       }
     }
@@ -197,20 +173,23 @@ void setup() {
       delay(1000);     
       serial_flag1 = false;
       Serial.println("Z_end");
-      break;
     }else if(serial_flag2){
       run_speed(stepper_z);
-      delay(1000);  
+      islimit0_z =false;
+      delay(1000);
+      
       run_speed(stepper_x);
       delay(1000);
       move_to(stepper_x, 25000, 2000);
+      islimit0_x =false;
       delay(1000);
-      Serial.println("foge1");
+     
       run_speed(stepper_y);
-      Serial.println("foge2");
       delay(1000);
       move_to(stepper_y, 25000, 2000);
-      delay(1000);      
+      islimit0_y =false;
+      delay(1000);
+            
       serial_flag2 = false;
       Serial.println("cariv_end");
       break;
@@ -224,29 +203,15 @@ void setup() {
 void loop() {
   if (Serial.available()) {
     String line = Serial.readStringUntil(';');
-    if (line.equals("move_z_start")) {
-      stepper_z.moveTo(40000);
-      stepper_z.setSpeed(100);
-      while (true) {
-        stepper_z.runSpeedToPosition();
-        //        stop_check();
-        if (Serial.available()) {
-          String line2 = Serial.readStringUntil(';');
-          if (line2.equals("stop")) {
-            stepper_z.stop();
-          } else if (line2.equals("sp-Z")) {
-            stepper_z.setSpeed(-2000);
-            while (true) { //モーターが端っこに来るまで動く
-              stepper_z.runSpeed();
-              stop_check();
-              if (islimit0_z) {
-                Serial.println("move_z_end");
-                stepper_z.stop();
-              }
-            }
-          }
-        }
-      }
+    if(line.equals("move_z_start")){
+      serial_flag1 = true;
     }
   }
+
+  if(serial_flag1){
+    move_to(stepper_z, 1000, 2000);
+    serial_flag1 = false;
+    Serial.println("move_z_end");
+  }
+
 }
