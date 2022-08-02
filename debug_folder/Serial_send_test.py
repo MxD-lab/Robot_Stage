@@ -9,11 +9,12 @@ import time
 if __name__ == '__main__':
     ser = serial.Serial("COM3", 115200) 
     time.sleep(1)
-    ser.write(bytes("cariv_start;",'utf-8'))
+    #ser.write(bytes("cariv_start;",'utf-8'))
+    ser.write("1".encode('utf-8'))
     while(True):
         if ser.inWaiting():
             str_buf = ser.readline().strip().decode('utf-8')
-            if str_buf == 'cariv_end':
+            if str_buf == '2':
                 print("carivration end")
                 break
     ser.close()
