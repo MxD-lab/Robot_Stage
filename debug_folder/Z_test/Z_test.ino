@@ -59,7 +59,7 @@ void setup() {
 
   stepper_z.setMaxSpeed(2000);  // 脱調防止
   //  stepper_z.setSpeed(CARIVSPEED); //なんかうまくいかない
-  stepper_z.setSpeed(1000);
+  stepper_z.setSpeed(-1000);
 
 //  stepper_z.setCurrentPosition(0); //0ポジ設定
 
