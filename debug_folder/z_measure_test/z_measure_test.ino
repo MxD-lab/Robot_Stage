@@ -1,7 +1,7 @@
 /*
   2022/07/29（金）記入者：船橋佑｜xyzのキャリブレーション後、z軸の計測のみ行う。その際、計測してからの反映が
  serialだと遅いので、計測時のみ2000pulse/秒ではなく100pulse/秒でおこなう。
-  2022/08/01（月）クラス化したよ
+  2022/08/01（月）関数化したよ
 */
 
 #include <AccelStepper.h>
@@ -218,80 +218,7 @@ void setup() {
   }
 }
       
-//
-//      if (line.equals("up_Z")) {
-//        while (true) { //モーターが端っこに来るまで動く
-//          stepper_z.runSpeed();
-//          stop_check();
-//          if (islimit0_z) {
-//            Serial.println("Z_end");
-//            islimit0_z = islimit1_z = false;
-//            break;
-//          }
-//        }
-//      }else if (line.equals("cariv_start")) {
-//        Serial.flush();
-//        while (true) { //モーターが端っこに来るまで動く
-//          stepper_x.runSpeed();
-//          stop_check();
-//          if (islimit0_x) {
-//            break;
-//          }
-//        }
-//        stepper_x.stop(); //端まで来たら止まる
-//        stepper_x.setCurrentPosition(0); //0ポジ設定
-//        islimit0_x = islimit1_x = false;
-//        delay(1000);
-//
-//        //モーターを真ん中まで動かす
-//        stepper_x.moveTo(25000);
-//        stepper_x.setSpeed(2000);
-//        while (true) {
-//          stepper_x.runSpeedToPosition();
-//          stop_check();
-//          if (stepper_x.currentPosition() == 25000) {
-//            break;
-//          }
-//        }
-//        //stepper_x.stop(); //端まで来たら止まる
-//        delay(1000);
-//
-//        while (true) { //モーターが端っこに来るまで動く
-//          stepper_y.runSpeed();
-//          stop_check();
-//          if (islimit0_y) {
-//            break;
-//          }
-//        }
-//        stepper_y.stop(); //端まで来たら止まる
-//        stepper_y.setCurrentPosition(0); //0ポジ設定
-//        islimit0_y = islimit1_y = false;
-//        delay(1000);
-//
-//        //モーターを真ん中まで動かす
-//        stepper_y.moveTo(30000);
-//        stepper_y.setSpeed(2000);
-//        while (true) {
-//          stepper_y.runSpeedToPosition();
-//          stop_check();
-//          if (stepper_y.currentPosition() == 30000) {
-//            break;
-//          }
-//        }
-//        //stepper_y.stop(); //端まで来たら止まる
-//        delay(1000);
-//
-//
-//        stepper_z.setCurrentPosition(0); //0ポジ設定
-//        islimit0_z = islimit1_z = false;
-//        delay(1000);
-//
-//        Serial.println("cariv_end");
-//        break;
-//      }
-//    }
-//  }
-//}
+
 
 //z軸を下に動かす。何もしなくてもいずれ止まるが、stop;というシリアル操作により能動的に制御可能
 void loop() {
