@@ -157,7 +157,7 @@ void setup() {
   stepper_y.setSpeed(CARIVSPEED);
   stepper_z.setMaxSpeed(2000);  // 脱調防止
   stepper_z.setSpeed(CARIVSPEED);
-  Serial.println("開始");
+  //Serial.println("start");
 
   while (true) {
     if (Serial.available()) {
@@ -204,8 +204,8 @@ void setup() {
 void loop() {
   if (Serial.available()) {
     int data = Serial.parseInt();
-    Serial.print("a:");
-    Serial.println(data);
+//    Serial.print("a:");
+//    Serial.println(data);
     if(data==3){
       serial_flag3 = true;
     }else if (data==4){
@@ -215,14 +215,18 @@ void loop() {
 
   if(serial_flag3){
     move_to(stepper_z, 17000, 2000);
+    stepper_z.moveTo(40000);
     stepper_z.setSpeed(100);
+    //Serial.flush();
     while(true){
-      Serial.println(data);
-      stepper_z.runSpeed();
+      //Serial.println(data);
+      //stepper_z.runSpeed();
+
+      stepper_z.runSpeedToPosition();
       if(Serial.available()){
         data = Serial.parseInt();
         if(data == 8 | data == 9){
-          Serial.println(data);
+          //Serial.println(data);
           Serial.println("3");
           stepper_z.stop();
           break;
