@@ -59,24 +59,36 @@ void setup() {
 
   stepper_z.setMaxSpeed(2000);  // 脱調防止
   //  stepper_z.setSpeed(CARIVSPEED); //なんかうまくいかない
-  stepper_z.setSpeed(-1000);
+  stepper_z.setSpeed(-2000);
 
-//  stepper_z.setCurrentPosition(0); //0ポジ設定
-
-  //    stepper_z.moveTo(-1000);
-  //    stepper_z.setSpeed(-2000);
-  //    while (true) {
-  //      stepper_z.runSpeedToPosition();
-  //      //Serial.println(stepper_z.currentPosition());
-  //      if (stepper_z.currentPosition() == -1000) {
-  //        break;
-  //      }
-  //    }
-  //  int count = 0;
-  while (true) {
+  while (true) { //モーターが端っこに来るまで動く
     stepper_z.runSpeed();
-//    count++;
+    if (islimit0_z) {
+      break;
+    }
   }
+  stepper_z.stop();
+  stepper_z.setCurrentPosition(0);
+  islimit0_z = islimit1_z = false;
+  delay(1000);
+
+  //  stepper_z.setCurrentPosition(0); //0ポジ設定
+
+      stepper_z.moveTo(40000);
+      stepper_z.setSpeed(2000);
+      while (true) {
+        stepper_z.runSpeedToPosition();
+        //Serial.println(stepper_z.currentPosition());
+        if (stepper_z.currentPosition() == 23000) {
+          break;
+        }
+      }
+  //  int count = 0;
+//  stepper_z.setSpeed(-2000);
+//  while (true) {
+//    stepper_z.runSpeed();
+//    //    count++;
+//  }
 
   //  for (int i = 0; i < 30000; i++) {
   //    Serial.println(i);
@@ -84,7 +96,7 @@ void setup() {
   //    count++;
   //  }
   Serial.println("owa");
-//  Serial.println(count);
+  //  Serial.println(count);
 
 
 
