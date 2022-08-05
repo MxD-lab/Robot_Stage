@@ -123,7 +123,7 @@ def morter_move():
     
 
 
-    ser.write("2".encode('utf-8'))
+    ser.write("2;".encode('utf-8'))
     while(True):
         try:
             # print("o")
@@ -151,11 +151,10 @@ def morter_move():
     
 
     #ここからZ軸を降ろして指定の圧力をかける
-    ser.write("3".encode('utf-8'))
+    ser.write("3;".encode('utf-8'))
     print("move_z_start")
     while(True):
-        print(road_Z)
-        print(ser.inWaiting())
+        # print(road_Z)
         try:
             if(end_flag==1):
                 break
@@ -175,14 +174,14 @@ def morter_move():
 
             #指定の圧力
             elif 1.5 >= road_Z >= 0.5:
-                ser.write("8".encode('utf-8'))
+                ser.write("8;".encode('utf-8'))
                 print("setZ")
                 # break
 
 
             #過剰な圧力が加わったら            
             elif road_Z >= 5: 
-                ser.write("9".encode('utf-8'))
+                ser.write("9;".encode('utf-8'))
                 print("emfin")
                 end_flag = 1
                 break
@@ -267,7 +266,7 @@ if __name__ == '__main__':
     
     ser = serial.Serial("COM3", 115200) 
     time.sleep(1)
-    ser.write("1".encode('utf-8'))
+    ser.write("1;".encode('utf-8'))
     # print("one")
     while(True):
         try:
