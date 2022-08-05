@@ -33,7 +33,9 @@ def lowpass(x, samplerate):
     data_lp[:, 2]= signal.filtfilt(b1, a1, x[:, 2])
     return data_lp, t
 
-input_csv = pd.read_csv('gomi/gomi_294.csv')
+#input_csv = pd.read_csv('gomi/gomi_404.csv')
+input_csv = pd.read_csv('gomi/gomi_406.csv')
+
 matrix_df = pd.DataFrame(input_csv)
 data = matrix_df[['1', '2', '3']].values 
 
