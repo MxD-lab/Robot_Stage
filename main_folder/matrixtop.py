@@ -36,20 +36,20 @@ ax4 = fig.add_subplot(2, 2, 4)
 
 
 #まずはデータの読み込みから
-df_header = pd.read_csv('Nii_data/data/9-23/gomiX_7.csv')      #CSVファイル読み込みxの分
+df_header = pd.read_csv('Nii_data/gomiX_8.csv')      #CSVファイル読み込みxの分
 df_header.columns=['1','2','3','4','5','6']
 matrix_df = pd.DataFrame(df_header)
 
-df_header2 = pd.read_csv('Nii_data/data/9-23/gomiY_1.csv')      #CSVファイル読み込みyの分
+df_header2 = pd.read_csv('Nii_data/gomiY_2.csv')      #CSVファイル読み込みyの分
 df_header2.columns=['1','2','3','4','5','6']
 matrix_df2 = pd.DataFrame(df_header2)
 
-df_header3 = pd.read_csv('Nii_data/data/9-23/gomiZ_7.csv')      #CSVファイル読み込みzの分
+df_header3 = pd.read_csv('Nii_data/gomiZ_8.csv')      #CSVファイル読み込みzの分
 df_header3.columns=['1','2','3','4','5','6']
 matrix_df3 = pd.DataFrame(df_header3)
 #matrix_df[matrix_df['3'] < 3]
 
-df_header4 = pd.read_csv('Nii_data/data/9-23/gomiXYZ_6.csv')      #CSVファイル読み込み計測テストのぶん
+df_header4 = pd.read_csv('Nii_data/gomiXYZ_7.csv')      #CSVファイル読み込み計測テストのぶん
 df_header4.columns=['1','2','3','4','5','6']
 matrix_df4 = pd.DataFrame(df_header4)
 
