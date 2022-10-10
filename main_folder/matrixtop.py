@@ -293,6 +293,7 @@ lr8.fit(XG3[:, 1].reshape(-1, 1), YG3_true[:, 2].reshape(-1, 1))
 lr9.fit(XG3[:, 2].reshape(-1, 1), YG3_true[:, 2].reshape(-1, 1))
 '''
 
+
 #まさかとは思うがXとYを逆にしてみる
 lr.fit(YG_true[:, 0].reshape(-1, 1), XG[:, 0].reshape(-1, 1))
 lr2.fit(YG_true[:, 0].reshape(-1, 1), XG[:, 1].reshape(-1, 1))
@@ -306,6 +307,8 @@ lr6.fit(YG2_true[:, 1].reshape(-1, 1), XG2[:, 2].reshape(-1, 1))
 lr7.fit(YG3_true[:, 2].reshape(-1, 1), XG3[:, 0].reshape(-1, 1))
 lr8.fit(YG3_true[:, 2].reshape(-1, 1), XG3[:, 1].reshape(-1, 1))
 lr9.fit(YG3_true[:, 2].reshape(-1, 1), XG3[:, 2].reshape(-1, 1))
+
+
 
 '''
 #テストデータでマトリクスを作る場合
