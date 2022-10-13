@@ -583,7 +583,7 @@ plt.show()
 
 #時系列、圧力、剪断プロット
 timec2 = np.arange(XG4_pred[:, 2].shape[0])
-timec2 = timec2 / 2000
+timec2 = timec2 / 1000
 
 fig2 = plt.figure(figsize=(10,7)) #グラフ表示の枠を調節
 fig2.subplots_adjust(hspace=0.3, wspace=0.2) #グラフ間の距離を調節
@@ -595,7 +595,8 @@ ax8 = fig2.add_subplot(2, 2, 4)
 
 ax5.plot(timec2, x6)
 ax5.plot(timec2, XG4_pred[:, 2])
-
+ax5.set_ylim(-0.2,1.9)
+#ax5.set_yticks(np.arange(-0.25,2,0.25))
 ax5.set_title("roadcell_pred Time series")
 ax5.legend(["roadcell_pressure","predict_data"])
 ax5.set_ylabel("Change of Loadcel (N)")
@@ -605,7 +606,7 @@ ax5.grid()
 
 #剪断X
 timec2 = np.arange(XG4_pred[:, 0].shape[0])
-timec2 = timec2 / 2000
+timec2 = timec2 / 1000
 
 ax6.plot(timec2, x4)
 ax6.plot(timec2, XG4_pred[:, 0])
@@ -619,7 +620,7 @@ ax6.grid()
 
 #剪断Y
 timec2 = np.arange(XG4_pred[:, 1].shape[0])
-timec2 = timec2 / 2000
+timec2 = timec2 / 1000
 
 ax7.plot(timec2, x5)
 ax7.plot(timec2, XG4_pred[:, 1])
