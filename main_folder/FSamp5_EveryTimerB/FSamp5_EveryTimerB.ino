@@ -21,6 +21,7 @@
 
 */
 
+//No290のセンサを使用．
 
 //AD Converter 拡張
 // 2021/07/12
@@ -36,8 +37,16 @@
 
 boolean isprint_flag = false;     //計測中を表すフラグ。falseの時は計測せず。trueの時に計測する。
 
+int firstAD[3];   //offsetかける用の値
+int ADmeasure[3];       //計測中にADから読み取ったアンプの出力の値を格納する配列
+float MEMS_ch1,MEMS_ch2,MEMS_ch3;
+float predF[3];
+
 //校正処理で算出したマトリクス(やったね！)
-float matrix[3][3] = { {-1.6241926, 1.0207639, 0.54335386}, {1.6146215, 1.0860839, 2.5450122}, {-0.11191151, -2.4101396, 2.132282} };
+float matrix[3][3] = { {-0.09997112, -2.3669715, 2.3152533}, 
+                      {1.5574169, 1.0746076, 2.5752459}, 
+                      {-1.701709, 1.012263, 0.33479804} };
+
 
 //計測中のDACの値を読み取る関数。リングバッファを使用
 void Read_AD(int *a ) {
@@ -78,29 +87,32 @@ void setup() {
   Timer1.initialize();                 //クロック初期化
   Timer1.attachInterrupt(flag_change);           //呼び出してくる関数を定義
   Timer1.setPeriod(1666);    //micro sec単位。約600Hzで計測できるようタイマー割り込みを行う。
+  firstAD[0] = analogRead(0); firstAD[1] = analogRead(1); firstAD[2] = analogRead(2);
 
+  
 }
 
-int ADmeasure[3];       //計測中にADから読み取ったアンプの出力の値を格納する配列
-float MEMS_ch1,MEMS_ch2,MEMS_ch3;
-float predF[3];
 
 //計測用
 void loop() {
  
   while(isprint_flag == true){
     Read_AD(ADmeasure);
-//    Serial.print(ADmeasure[0]); Serial.print(' '); Serial.print(ADmeasure[1]); Serial.print(' '); Serial.println(ADmeasure[2]);
-    MEMS_ch1 = ADmeasure[0]*5.0/1024 -0.58;
-    MEMS_ch2 = ADmeasure[1]*5.0/1024 -0.63;
-    MEMS_ch3 = ADmeasure[2]*5.0/1024 -0.63;
+    ADmeasure[0] = ADmeasure[0] - firstAD[0];
+    ADmeasure[1] = ADmeasure[1] - firstAD[1];
+    ADmeasure[2] = ADmeasure[2] - firstAD[2];
+
+//    Serial.print(ADmeasure[0]); Serial.print(','); Serial.print(ADmeasure[1]); Serial.print(','); Serial.println(ADmeasure[2]);
+    MEMS_ch1 = ADmeasure[0]*5.0/1024;
+    MEMS_ch2 = ADmeasure[1]*5.0/1024;
+    MEMS_ch3 = ADmeasure[2]*5.0/1024;
 
     predF[0] = MEMS_ch1*matrix[0][0]  +  MEMS_ch2*matrix[1][0]  +  MEMS_ch3*matrix[2][0];
     predF[1] = MEMS_ch1*matrix[0][1]  +  MEMS_ch2*matrix[1][1]  +  MEMS_ch3*matrix[2][1];
     predF[2] = MEMS_ch1*matrix[0][2]  +  MEMS_ch2*matrix[1][2]  +  MEMS_ch3*matrix[2][2];
 
-    Serial.print(predF[0]); Serial.print(' '); Serial.print(predF[1]); Serial.print(' '); Serial.println(predF[2]);
-//    Serial.print(MEMS_ch1); Serial.print(' '); Serial.print(MEMS_ch2); Serial.print(' '); Serial.println(MEMS_ch3);
+    Serial.print(predF[0]); Serial.print(','); Serial.print(predF[1]); Serial.print(','); Serial.println(predF[2]);
+//    Serial.print(MEMS_ch1); Serial.print(','); Serial.print(MEMS_ch2); Serial.print(','); Serial.println(MEMS_ch3);
     isprint_flag = false;
   }
   
