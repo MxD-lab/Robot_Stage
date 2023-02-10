@@ -74,7 +74,7 @@ def change_power(raw_data):
     return res
 
 
-def make_new_file_name(file_top = "dataZ", data_type = ".csv", file_path = "./data/1-25/"):
+def make_new_file_name(file_top = "dataZ", data_type = ".csv", file_path = "./data/2-7/"):
     num_pat = r'([+-]?[0-9]+\.?[0-9]*)'
     numpatter = re.compile(num_pat)
     namepatter = re.compile(file_top)
