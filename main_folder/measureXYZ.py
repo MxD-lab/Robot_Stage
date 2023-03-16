@@ -74,7 +74,7 @@ def change_power(raw_data):
     return res
 
 
-def make_new_file_name(file_top = "dataZ", data_type = ".csv", file_path = "./data/3-14/349/"):
+def make_new_file_name(file_top = "dataXYZ", data_type = ".csv", file_path = "./data/3-14/349/"):
     num_pat = r'([+-]?[0-9]+\.?[0-9]*)'
     numpatter = re.compile(num_pat)
     namepatter = re.compile(file_top)
@@ -126,7 +126,7 @@ def morter_move():
         ser.write(bytes("2;",'utf-8'))
     while(True):
         try:
-            # print(road_Z)
+            # print("o")
             if ser.inWaiting():
                 str_buf = ser.readline().strip().decode('utf-8')
                 if str_buf == '2':
@@ -148,9 +148,9 @@ def morter_move():
     
     
     time.sleep(1)
-    
 
-    #ここからZ軸を降ろして指定の圧力をかける
+    #Zにかける力2山くらいやりたい
+
     for i in range(10):
         ser.write(bytes("3;",'utf-8'))
     print("move_z_start")
@@ -162,21 +162,14 @@ def morter_move():
 
             elif ser.inWaiting():
                 str_buf = ser.readline().strip().decode('utf-8')
-                print('foge')
                 if str_buf == '3':
                     print("z_end")
                     break
 
-                # elif str_buf == "tomatta":
-                #     # print("tommattayo")
-                #     # end_flag = 1
-                #     # time.sleep(5)
-                #     break
-
             #指定の圧力
             elif 1.2 >= road_Z >= 1.0:
                 ser.write(bytes("8;", 'utf-8'))
-                # print("setZ")
+                print("setZ")
                 # break
 
 
@@ -184,89 +177,153 @@ def morter_move():
             elif road_Z >= 5: 
                 ser.write(bytes("9;",'utf-8'))
                 print("emfin")
-                end_flag = 1
+                #end_flag = 1
+                #break
+
+        except KeyboardInterrupt:
+            break
+
+    time.sleep(1)
+    for i in range(10):
+        ser.write(bytes("7;",'utf-8'))
+    time.sleep(3)
+    print("move_z2_start")
+    while(True):
+        print(road_Z)
+        try:
+            if(end_flag==1):
                 break
+
+            elif ser.inWaiting():
+                str_buf = ser.readline().strip().decode('utf-8')
+                if str_buf == '7':
+                    print("z_end")
+                    break
+
+            #指定の圧力
+            elif 1.2 >= road_Z >= 1.0:
+                ser.write(bytes("10;", 'utf-8'))
+
+            #過剰な圧力が加わったら            
+            elif road_Z >= 5: 
+                ser.write(bytes("9;",'utf-8'))
+                print("emfin")
+                #end_flag = 1
+                #break
+
+        except KeyboardInterrupt:
+            break
+    # time.sleep(5)
+    # #ここからZ軸を降ろして指定の圧力をかける
+    # ser.write(bytes("7;",'utf-8'))
+    # # time.sleep(3)
+    # print("move_z3_start")
+    # while(True):
+    #     print(road_Z)
+    #     try:
+    #         if(end_flag==1):
+    #             break
+
+    #         elif ser.inWaiting():
+    #             str_buf = ser.readline().strip().decode('utf-8')
+    #             print('foge')
+    #             if str_buf == '7':
+    #                 print("z_end")
+    #                 break
+
+    #         #指定の圧力
+    #         elif 1.2 >= road_Z >= 1.0:
+    #             ser.write(bytes("10;", 'utf-8'))
+    #             print("setZ")
+    #             # break
+
+
+    #         #過剰な圧力が加わったら            
+    #         elif road_Z >= 5: 
+    #             ser.write(bytes("9;",'utf-8'))
+    #             print("emfin")
+    #             #end_flag = 1
+    #             break
+
+    #     except KeyboardInterrupt:
+    #         break
+    
+    
+
+    time.sleep(1)
+    #ここからX軸をうごかす
+    for i in range(10):
+        ser.write(bytes("4;",'utf-8'))
+    while(True):
+        print(road_Z)
+        try:
+            if(end_flag==1):
+                break
+
+            elif ser.inWaiting():
+                str_buf = ser.readline().strip().decode('utf-8')
+                if str_buf == '4':
+                    print("x_end")
+                    break
+
+            # elif 1.2 > road_Z > 0.8:
+            #     ser.write(bytes("no-plom;", 'utf-8'))
+
+            elif 1.05 < road_Z:
+                ser.write(bytes("Z-;", 'utf-8'))
+                time.sleep(0.05)
+
+            elif 0.95 > road_Z:
+                ser.write(bytes("Z+;", 'utf-8'))
+                time.sleep(0.05)
+
+            # elif 0.8 > road_Z:
+            #     ser.write(bytes("Z+;", 'utf-8'))
+
+            # elif road_Z > 5: 
+            #     ser.write(bytes("stop;",'utf-8'))
+            #     print("emfin2")
+            #     end_flag = 1
+            #     break
 
         except KeyboardInterrupt:
             break
     
-    
-    #time.sleep(5)
-    # #ここからX軸をうごかす
-    # ser.write(bytes("4;",'utf-8'))
-    # while(True):
-    #     # print(road_Z,road_X)
-    #     try:
-    #         if(end_flag==1):
-    #             break
+    time.sleep(1)
+    #ここからy軸をうごかす
+    for i in range(10):
+        ser.write(bytes("5;",'utf-8'))
+    while(True):
+        print(road_Z)
+        try:
+            if(end_flag==1):
+                break
 
-    #         elif ser.inWaiting():
-    #             str_buf = ser.readline().strip().decode('utf-8')
-    #             if str_buf == '4':
-    #                 print("x_end")
-    #                 break
+            elif ser.inWaiting():
+                str_buf = ser.readline().strip().decode('utf-8')
+                if str_buf == '5':
+                    print("y_end")
+                    break
 
-    #         # elif 1.2 > road_Z > 0.8:
-    #         #     ser.write(bytes("no-plom;", 'utf-8'))
+            # elif 1.2 > road_Z > 0.8:
+            #     ser.write(bytes("no-plom;", 'utf-8'))
 
-    #         elif 1.05 < road_Z:
-    #             ser.write(bytes("Z-;", 'utf-8'))
-    #             # print("-")
+            elif 1.05 < road_Z:
+                ser.write(bytes("Z-;", 'utf-8'))
+                time.sleep(0.05)
 
-    #         elif 1.05 >= road_Z >= 0.95:
-    #             ser.write(bytes("stay;", 'utf-8'))
+            elif 0.95 > road_Z:
+                ser.write(bytes("Z+;", 'utf-8'))
+                time.sleep(0.05)
 
-    #         elif 0.95 > road_Z:
-    #             ser.write(bytes("Z+;", 'utf-8'))
-    #             # print("+")
+            # elif road_Z > 5: 
+            #     ser.write(bytes("stop;",'utf-8'))
+            #     print("emfin2")
+            #     end_flag = 1
+            #     break
 
-    #         # elif 0.8 > road_Z:
-    #         #     ser.write(bytes("Z+;", 'utf-8'))
-
-    #         elif road_Z > 5: 
-    #             ser.write(bytes("stop;",'utf-8'))
-    #             print("emfin2")
-    #             end_flag = 1
-    #             break
-
-    #     except KeyboardInterrupt:
-    #         break
-    
-    # time.sleep(1)
-    # #ここからy軸をうごかす
-    # ser.write(bytes("5;",'utf-8'))
-    # while(True):
-    #     # print(road_Z,road_Y)
-    #     try:
-    #         if(end_flag==1):
-    #             break
-
-    #         elif ser.inWaiting():
-    #             str_buf = ser.readline().strip().decode('utf-8')
-    #             if str_buf == '5':
-    #                 print("y_end")
-    #                 break
-
-    #         # elif 1.2 > road_Z > 0.8:
-    #         #     ser.write(bytes("no-plom;", 'utf-8'))
-
-    #         elif 1.05 < road_Z:
-    #             ser.write(bytes("Z-;", 'utf-8'))
-
-    #         elif 1.05 >= road_Z >= 0.95:
-    #             ser.write(bytes("stay;", 'utf-8'))
-
-    #         elif 0.95 > road_Z:
-    #             ser.write(bytes("Z+;", 'utf-8'))
-
-    #         elif road_Z > 5: 
-    #             ser.write(bytes("stop;",'utf-8'))
-    #             print("emfin2")
-    #             end_flag = 1
-    #             break
-
-    #     except KeyboardInterrupt:
-    #         break
+        except KeyboardInterrupt:
+            break
 
 
     time.sleep(1)
@@ -274,7 +331,7 @@ def morter_move():
     for i in range(10):
         ser.write(bytes("6;",'utf-8'))
     while(True):
-        print(road_Z)
+        # print(road_Z,road_Y)
         try:
             if(end_flag==1):
                 break
@@ -285,11 +342,11 @@ def morter_move():
                     print("Congratulation!!")
                     break
 
-            elif road_Z > 5: 
-                ser.write(bytes("stop;",'utf-8'))
-                print("emfin3")
-                end_flag = 1
-                break
+            # elif road_Z > 5: 
+            #     ser.write(bytes("stop;",'utf-8'))
+            #     print("emfin3")
+            #     end_flag = 1
+            #     break
 
         except KeyboardInterrupt:
             break
@@ -340,7 +397,6 @@ if __name__ == '__main__':
 
     for i in range(10):
         ser.write(bytes("1;",'utf-8'))
-    # print("one")
     while(True):
         try:
             if ser.inWaiting():

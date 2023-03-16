@@ -47,6 +47,7 @@ import itertools
 class Measure():
     def __init__(self, UPDATE_RATE = 10):
         self.SAMPLE_RATE = 1000 #1秒で取るサンプル数[hz]
+        #self.SAMPLE_RATE = 600 #構成処理確認の時だけこっち
         self.UPDATE_RATE = UPDATE_RATE #秒間のデータ更新間隔[hz]c
         self.MAX_TIME = 1000 #最大時間[sec]
         # self.TOCUH_CHECK = 0.05 #接触判定とする値
@@ -109,6 +110,7 @@ count = 0
 if __name__ == '__main__':
     # np.set_printoptions(precision=2)
     mes = Measure(UPDATE_RATE = 1000)
+    #mes = Measure(UPDATE_RATE = 600)   #構成処理確認の時だけこっち
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
     while(True):
