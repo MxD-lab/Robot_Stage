@@ -201,5 +201,5 @@ void setup() {
 void loop() {
   moveXYZ(1500,25000,1500,27000,0,0);
   //moveX(1500,25000);
-  delay(10);
+  //delay(10);
 }
