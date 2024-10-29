@@ -24,7 +24,7 @@
 #define LIMIT_INT0_PIN_z    19
 #define LIMIT_INT1_PIN_z    18
 
-#define CARIVSPEED -2000
+#define CALIBSPEED -2000
 
 bool islimit0_x = false;
 bool islimit1_x = false;
@@ -36,25 +36,6 @@ long move_position;
 
 bool serial_flag1 = false;
 bool serial_flag2 = false;
-
-//x軸のステッパー変数
-AccelStepper stepper_x(
-  AccelStepper::DRIVER,
-  STEPPER_PULSE_PIN_x, STEPPER_CCW_PIN_x
-);
-
-//y軸のステッパー変数
-AccelStepper stepper_y(
-  AccelStepper::DRIVER,
-  STEPPER_PULSE_PIN_y, STEPPER_CCW_PIN_y
-);
-
-//z軸のステッパー変数
-AccelStepper stepper_z(
-  AccelStepper::DRIVER,
-  STEPPER_PULSE_PIN_z, STEPPER_CCW_PIN_z
-);
-
 
 void flag_0() {
   //  Serial.println("limit0!!!");
@@ -86,44 +67,102 @@ void flag_5() {
   islimit1_z = true;
 }
 
-void stop_check() {
-  if (Serial.available()) {
-    String line2 = Serial.readStringUntil(';');
-    if (line2.equals("stop")) {
+//x軸のステッパー変数
+AccelStepper stepper_x(
+  AccelStepper::DRIVER,
+  STEPPER_PULSE_PIN_x, STEPPER_CCW_PIN_x
+);
+
+//y軸のステッパー変数
+AccelStepper stepper_y(
+  AccelStepper::DRIVER,
+  STEPPER_PULSE_PIN_y, STEPPER_CCW_PIN_y
+);
+
+//z軸のステッパー変数
+AccelStepper stepper_z(
+  AccelStepper::DRIVER,
+  STEPPER_PULSE_PIN_z, STEPPER_CCW_PIN_z
+);
+
+//キャリブレーション用関数
+void Calibration() {
+  islimit0_x = false;
+  islimit1_x = false;
+  islimit0_y = false;
+  islimit1_y = false;
+  islimit0_z = false; //z軸上
+  islimit1_z = false; 
+  while (islimit0_z==false){
+    stepper_z.setSpeed(CALIBSPEED);
+    stepper_z.runSpeed();
+    Serial.println("Calibration z");  
+    }
+  stepper_z.stop();
+  stepper_z.setCurrentPosition(0);
+  Serial.println("z fin");
+  while (islimit0_y ==false){
+    stepper_y.setSpeed(CALIBSPEED);
+    stepper_y.runSpeed();
+    Serial.println("Calibration y");   
+    }
+  stepper_y.stop();
+  stepper_y.setCurrentPosition(0);
+  Serial.println("y fin");
+  while (islimit0_x==false){
+    stepper_x.setSpeed(CALIBSPEED);
+    stepper_x.runSpeed();
+    Serial.println("Calibration x");
+    }
+  stepper_x.stop();
+  stepper_x.setCurrentPosition(0);
+  Serial.println("x fin");
+  Serial.println("fin Calibration");
+  }
+
+void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_speed,long z_position){
+  stepper_x.moveTo(x_position);
+  stepper_y.moveTo(y_position);
+  stepper_z.moveTo(z_position);
+  stepper_x.setSpeed(x_speed);
+  stepper_y.setSpeed(y_speed);
+  stepper_z.setSpeed(z_speed);  
+  while(true){
+    Serial.println("moving");
+    stepper_x.runSpeedToPosition();
+    stepper_y.runSpeedToPosition();
+    stepper_z.runSpeedToPosition();
+    if(stepper_x.currentPosition()==x_position){
       stepper_x.stop();
+      Serial.println("x stop");
+      }
+    if(stepper_y.currentPosition()==y_position){
       stepper_y.stop();
+      Serial.println("y stop");
+      }
+    if(stepper_z.currentPosition()==z_position){
       stepper_z.stop();
-      Serial.println("move_z_end");
-    }
-  }
-}
-
-void run_speed(AccelStepper axis){
-  while (true) { //モーターが端っこに来るまで動く
-    axis.runSpeed();
-    stop_check();
-    if (islimit0_x==true|islimit1_x==true|islimit0_y==true|islimit1_y==true|islimit0_z==true|islimit1_z==true) {
+      Serial.println("z stop");
+      }
+    if(stepper_x.currentPosition()==x_position & stepper_y.currentPosition()==y_position & stepper_z.currentPosition()==z_position){
       break;
+      }            
     }
   }
-  axis.stop(); //端まで来たら止まる
-  axis.setCurrentPosition(0); //0ポジ設定
-}  
 
-
-void move_to(AccelStepper axis,int distance,int pulse){
-  axis.moveTo(distance);
-  axis.setSpeed(pulse);
-  while (true) {
-    axis.runSpeedToPosition();
-    stop_check();
-    if (axis.currentPosition() == distance) {
+void moveX(long x_speed,long x_position){
+  stepper_x.moveTo(x_position);
+  stepper_x.setSpeed(x_speed);  
+  while(true){
+    Serial.println("moving");
+    stepper_x.runSpeedToPosition();
+    if(stepper_x.currentPosition()==x_position){
+      stepper_x.stop();
+      Serial.println("x stop");
       break;
+      }            
     }
   }
-}  
-
-
 void setup() {
   // Configure GPIO Pins
   pinMode(STEPPER_PULSE_PIN_x, OUTPUT);
@@ -150,68 +189,17 @@ void setup() {
   Serial.begin(115200);
   // Init Stepper Motor
   stepper_x.setMaxSpeed(2000);  // 脱調防止
-  stepper_x.setSpeed(CARIVSPEED);
   stepper_y.setMaxSpeed(2000);  // 脱調防止
-  stepper_y.setSpeed(CARIVSPEED);
   stepper_z.setMaxSpeed(2000);  // 脱調防止
-  stepper_z.setSpeed(CARIVSPEED);
-
-  while (true) {
-    if (Serial.available()) {
-      String line = Serial.readStringUntil(';');
-      if (line.equals("up_Z")) {
-        Serial.flush();
-        serial_flag1 = true;
-      }else if(line.equals("cariv_start")){
-        Serial.flush();
-        serial_flag2 = true;
-      }
-    }
-
-    if(serial_flag1){
-      run_speed(stepper_z);
-      delay(1000);     
-      serial_flag1 = false;
-      Serial.println("Z_end");
-    }else if(serial_flag2){
-      run_speed(stepper_z);
-      islimit0_z =false;
-      delay(1000);
-      
-      run_speed(stepper_x);
-      delay(1000);
-      move_to(stepper_x, 25000, 2000);
-      islimit0_x =false;
-      delay(1000);
-     
-      run_speed(stepper_y);
-      delay(1000);
-      move_to(stepper_y, 25000, 2000);
-      islimit0_y =false;
-      delay(1000);
-            
-      serial_flag2 = false;
-      Serial.println("cariv_end");
-      break;
-    }
-  }
+  Serial.println("Setup");
+  Calibration();
 }
       
 
 
 
 void loop() {
-  if (Serial.available()) {
-    String line = Serial.readStringUntil(';');
-    if(line.equals("move_z_start")){
-      serial_flag1 = true;
-    }
-  }
-
-  if(serial_flag1){
-    move_to(stepper_z, 1000, 2000);
-    serial_flag1 = false;
-    Serial.println("move_z_end");
-  }
-
+  moveXYZ(1500,25000,1500,27000,0,0);
+  //moveX(1500,25000);
+  delay(10);
 }
