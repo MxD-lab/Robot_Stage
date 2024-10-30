@@ -130,7 +130,7 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
   stepper_x.setSpeed(x_speed);
   stepper_y.setSpeed(y_speed);
   stepper_z.setSpeed(z_speed);  
-  while(true){
+  while(stepper_x.currentPosition()!=x_position | stepper_y.currentPosition()!=y_position | stepper_z.currentPosition()!=z_position){
     Serial.println("moving");
     stepper_x.runSpeedToPosition();
     stepper_y.runSpeedToPosition();
@@ -146,10 +146,7 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
     if(stepper_z.currentPosition()==z_position){
       stepper_z.stop();
       Serial.println("z stop");
-      }
-    if(stepper_x.currentPosition()==x_position & stepper_y.currentPosition()==y_position & stepper_z.currentPosition()==z_position){
-      break;
-      }            
+      }      
     }
     Serial.println("Done");
   }
