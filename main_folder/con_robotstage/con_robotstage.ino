@@ -2,6 +2,7 @@
   2022/07/29（金）記入者：船橋佑｜xyzのキャリブレーション後、z軸の計測のみ行う。その際、計測してからの反映がserialだと遅いので、計測時のみ2000pulse/秒ではなく100pulse/秒でおこなう。
   2022/08/01（月）記入者：船橋佑｜よく使うlimit制御で移動するコードと指定した位置まで移動するコードを関数化した
   2022/08/02（火）記入者：船橋裕｜各ループのなかを整理した。基本はシリアルを受け付けるだけのループであり、指定した文字がくると実行したいコードのフラグを切り替える。
+  2024/10/29 (火)記入者：齋藤竜也｜システム設計の変更キャリブレーションを関数で用意し、呼び出しによって実行するに変更。moveXYZ()を追加
 */
 
 #include <AccelStepper.h>
@@ -92,7 +93,8 @@ void Calibration() {
   islimit0_y = false;
   islimit1_y = false;
   islimit0_z = false; //z軸上
-  islimit1_z = false; 
+  islimit1_z = false;
+  Serial.println("Calibration now"); 
   while (islimit0_z==false){
     stepper_z.setSpeed(CALIBSPEED);
     stepper_z.runSpeed();
@@ -119,7 +121,8 @@ void Calibration() {
   Serial.println("x fin");
   Serial.println("fin Calibration");
   }
-
+  
+//moveXYZ(x速度(<2000),x座標,y速度(<2000),y座標,z速度(<2000),z座標)
 void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_speed,long z_position){
   stepper_x.moveTo(x_position);
   stepper_y.moveTo(y_position);
@@ -148,6 +151,7 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
       break;
       }            
     }
+    Serial.println("Done");
   }
 
 void moveX(long x_speed,long x_position){
@@ -177,7 +181,7 @@ void setup() {
   pinMode(STEPPER_CCW_PIN_z,   OUTPUT);
   pinMode(LIMIT_INT0_PIN_z, INPUT_PULLUP);
   pinMode(LIMIT_INT1_PIN_z, INPUT_PULLUP);
-
+  //リミットセンサ割り込み
   attachInterrupt(digitalPinToInterrupt(LIMIT_INT0_PIN_x), flag_0, RISING);
   attachInterrupt(digitalPinToInterrupt(LIMIT_INT1_PIN_x), flag_1, RISING);
   attachInterrupt(digitalPinToInterrupt(LIMIT_INT0_PIN_y), flag_2, RISING);
@@ -192,14 +196,24 @@ void setup() {
   stepper_y.setMaxSpeed(2000);  // 脱調防止
   stepper_z.setMaxSpeed(2000);  // 脱調防止
   Serial.println("Setup");
-  Calibration();
+  // キャリブレーションの実行
+  //Calibration();
 }
       
 
 
 
 void loop() {
-  moveXYZ(1500,25000,1500,27000,0,0);
+  //moveXYZ(1500,25000,1500,27000,1500,10000);
   //moveX(1500,25000);
-  //delay(10);
+  if(Serial.available()>0){
+    String input = Serial.readStringUntil('\n');
+    Serial.println(input);
+    if(input == "Cal"){
+      Calibration();
+      moveXYZ(1000,25000,1000,27000,1000,10000);
+      
+      }
+    }
+  //Serial.println("loop");
 }
