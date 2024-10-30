@@ -130,11 +130,7 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
   stepper_x.setSpeed(x_speed);
   stepper_y.setSpeed(y_speed);
   stepper_z.setSpeed(z_speed);  
-  while(stepper_x.currentPosition()!=x_position | stepper_y.currentPosition()!=y_position | stepper_z.currentPosition()!=z_position){
-    Serial.println("moving");
-    stepper_x.runSpeedToPosition();
-    stepper_y.runSpeedToPosition();
-    stepper_z.runSpeedToPosition();
+  while(stepper_x.currentPosition()<=x_position | stepper_y.currentPosition()<=y_position | stepper_z.currentPosition()<=z_position){ 
     if(stepper_x.currentPosition()==x_position){
       stepper_x.stop();
       Serial.println("x stop");
@@ -146,22 +142,28 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
     if(stepper_z.currentPosition()==z_position){
       stepper_z.stop();
       Serial.println("z stop");
-      }      
+      }
+    stepper_x.runSpeedToPosition();
+    stepper_y.runSpeedToPosition();
+    stepper_z.runSpeedToPosition();      
+    //Serial.println("moving");
+    Serial.print("x is =");
+    Serial.println(stepper_x.currentPosition());
+    Serial.print("y is =");
+    Serial.println(stepper_y.currentPosition());
+    Serial.print("z is =");
+    Serial.println(stepper_z.currentPosition());    
     }
-    Serial.println("Done");
+  Serial.println("Done");
   }
 
 void moveX(long x_speed,long x_position){
   stepper_x.moveTo(x_position);
   stepper_x.setSpeed(x_speed);  
-  while(true){
-    Serial.println("moving");
-    stepper_x.runSpeedToPosition();
-    if(stepper_x.currentPosition()==x_position){
-      stepper_x.stop();
-      Serial.println("x stop");
-      break;
-      }            
+  while(stepper_x.currentPosition!=x_position){
+    Serial.print("moving");
+    Serial.println(stepper_x.currentPosition());    
+    stepper_x.runSpeedToPosition();         
     }
   }
 void setup() {
@@ -193,8 +195,6 @@ void setup() {
   stepper_y.setMaxSpeed(2000);  // 脱調防止
   stepper_z.setMaxSpeed(2000);  // 脱調防止
   Serial.println("Setup");
-  // キャリブレーションの実行
-  //Calibration();
 }
       
 
@@ -205,11 +205,25 @@ void loop() {
   //moveX(1500,25000);
   if(Serial.available()>0){
     String input = Serial.readStringUntil('\n');
-    Serial.println(input);
     if(input == "Cal"){
       Calibration();
-      moveXYZ(1000,25000,1000,27000,1000,10000);
-      
+      //moveXYZ(1000,25000,1000,27000,1000,10000);      
+      }
+    else{
+      int indexXs = input.indexOf(',');
+      int indexXp = input.indexOf(',',indexXs+1);
+      int indexYs = input.indexOf(',',indexXp+1);
+      int indexYp = input.indexOf(',',indexYs+1);
+      int indexZs = input.indexOf(',',indexYp+1);
+
+      long xsp = input.substring(0,indexXs).toInt();
+      long xpos = input.substring(indexXs+1,indexXp).toInt();
+      long ysp = input.substring(indexXp+1,indexYs).toInt();
+      long ypos = input.substring(indexYs+1,indexYp).toInt();
+      long zsp = input.substring(indexYp+1,indexZs).toInt();
+      long zpos = input.substring(indexZs+1).toInt();
+      moveXYZ(xsp,xpos,ysp,ypos,zsp,zpos);
+                  
       }
     }
   //Serial.println("loop");
