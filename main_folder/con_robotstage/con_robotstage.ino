@@ -130,17 +130,14 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
   stepper_x.setSpeed(x_speed);
   stepper_y.setSpeed(y_speed);
   stepper_z.setSpeed(z_speed);  
-  while(stepper_x.currentPosition()<=x_position | stepper_y.currentPosition()<=y_position | stepper_z.currentPosition()<=z_position){ 
+  while(stepper_x.currentPosition()!= x_position | stepper_y.currentPosition()!=y_position | stepper_z.currentPosition()!=z_position){ 
     if(stepper_x.currentPosition()==x_position){
-      stepper_x.stop();
       Serial.println("x stop");
       }
     if(stepper_y.currentPosition()==y_position){
-      stepper_y.stop();
       Serial.println("y stop");
       }
     if(stepper_z.currentPosition()==z_position){
-      stepper_z.stop();
       Serial.println("z stop");
       }
     stepper_x.runSpeedToPosition();
@@ -160,10 +157,10 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
 void moveX(long x_speed,long x_position){
   stepper_x.moveTo(x_position);
   stepper_x.setSpeed(x_speed);  
-  while(stepper_x.currentPosition!=x_position){
-    Serial.print("moving");
-    Serial.println(stepper_x.currentPosition());    
-    stepper_x.runSpeedToPosition();         
+  while(stepper_x.currentPosition()!=x_position){
+    Serial.print("x is =");
+    Serial.println(stepper_x.currentPosition());
+    stepper_x.runSpeedToPosition();          
     }
   }
 void setup() {
