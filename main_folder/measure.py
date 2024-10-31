@@ -86,30 +86,6 @@ def change_power(raw_data):
     return res
 
 
-def make_new_file_name(file_top = "dataZ", data_type = ".csv", file_path = "./data/3-14/349/"):
-    num_pat = r'([+-]?[0-9]+\.?[0-9]*)'
-    numpatter = re.compile(num_pat)
-    namepatter = re.compile(file_top)
-    tmp= 0
-    # easy_name = "pressure_and_speed_data/gomi/"
-    # file_path =file_path+easy_name
-
-
-    os.makedirs(file_path,exist_ok=True)
-    
-
-    for filename in os.listdir(file_path):
-        name, path  = os.path.splitext(filename)
-        if path == data_type:
-            num_match = numpatter.search(name)
-            name_match = namepatter.match(name)
-            if num_match and name_match != None:
-                if tmp < int(num_match.group()):
-                    
-                    tmp = int(num_match.group())
-
-    return file_path+file_top +"_"+ str(tmp+1)#+data_type
-
 #Arduinoと接続、ロボットステージの制御用クラス
 class MoterControll():
     ###ロードセルとの接続をコンストラクタで実行
@@ -207,25 +183,19 @@ class DaqMeasure:
                                 self.data[n] = power[n,0]
                             #print(self.data)
                             writer.writerow(self.data)
-                            print(f"z={self.data[2]}")
+                        #print(f"z={self.data[2]}")
                 except KeyboardInterrupt:
                     print("finish")
 
 
     def get(self, channel):
-        return self.data[channel]
+        print(f"z={self.data[channel]}")
     
 
 if __name__ == '__main__':
-    # motercon = MoterControll()
-    # motercon.calibration()
-    # motercon.move_senpos()
-    # motercon.move_xyz(25000,27000,6000)
-    # motercon.close()
+    ##この2つをどう動かすかスレッドにするかソケット通信にするか
+    motercon = MoterControll()
+    motercon.calibration()
+    motercon.move_senpos()
     loadread = DaqMeasure()
     loadread.measurement("daq_test.csv")
-    while True:
-        data = loadread.get(2)
-        print(data)
-        if(data >= 5):
-            break     
