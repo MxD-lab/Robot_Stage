@@ -138,12 +138,13 @@ class MoterControll():
         self.serial.close()
 
 #NiDaqとの接続、ロードセルと触覚センサの情報取得
-class DaqMeasure:
+class DaqMeasure(MoterControll):
     def __init__(self, device_name="Dev1", channels=6, sample_rate=1000, chunk_size=100):
         self.device_name = device_name
         self.channels = channels
         self.sample_rate = sample_rate
         self.chunk_size = chunk_size  # 1回の読み取りで取得するサンプル数
+        super().__init__()
 
     def measurement(self, filename="daq_data_continuous.csv"):
         # CSVファイルをオープン
@@ -183,6 +184,9 @@ class DaqMeasure:
                                 self.data[n] = power[n,0]
                             #print(self.data)
                             writer.writerow(self.data)
+                        #シリアルで送信 
+                        force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}'   
+                        self.serial.write(force.encode())
                         #print(f"z={self.data[2]}")
                 except KeyboardInterrupt:
                     print("finish")
@@ -194,8 +198,5 @@ class DaqMeasure:
 
 if __name__ == '__main__':
     ##この2つをどう動かすかスレッドにするかソケット通信にするか
-    motercon = MoterControll()
-    motercon.calibration()
-    motercon.move_senpos()
     loadread = DaqMeasure()
     loadread.measurement("daq_test.csv")
