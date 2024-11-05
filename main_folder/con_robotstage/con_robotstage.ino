@@ -71,9 +71,22 @@ void flag_5() {
   islimit1_z = true;
 }
 
+//緊急停止割り込み用関数・外部割り込みピンはリミットセンサで使用済みのためD14番に対してピン変化割り込み(PCINT)
 ISR(PCINT1_vect) {
-  Serial.println("ピン変化割り込みが発生しました");
+  STOP = true;
+  Serial.println("Emergency STOP");
+  digitalWrite(STEPPER_PULSE_PIN_x, LOW);
+  digitalWrite(STEPPER_CCW_PIN_x, LOW);
+  digitalWrite(STEPPER_PULSE_PIN_y, LOW);
+  digitalWrite(STEPPER_CCW_PIN_y, LOW);
+  digitalWrite(STEPPER_PULSE_PIN_z, LOW);
+  digitalWrite(STEPPER_CCW_PIN_z, LOW);
+  //停止用
+  while (true) {
+  }
 }
+
+
 //x軸のステッパー変数
 AccelStepper stepper_x(
   AccelStepper::DRIVER,
@@ -160,9 +173,11 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
   Serial.println("Done");
   }
 
+//Pythonからうけた力までロボットステージを動かす
 void moveToForceXYZ(){
-  
   }
+
+  
 void SerialRead(){
     if(Serial.available()>0){
     String input = Serial.readStringUntil('\n');
@@ -226,29 +241,12 @@ void setup() {
 
 
 void loop() {
-  //moveXYZ(1500,25000,1500,27000,1500,10000);
-  //moveX(1500,25000);
-  if(Serial.available()>0){
-    String input = Serial.readStringUntil('\n');
-    if(input == "Cal"){
-      Calibration();
-      //moveXYZ(1000,25000,1000,27000,1000,10000);      
-      }
-    else{
-      int indexXs = input.indexOf(',');
-      int indexXp = input.indexOf(',',indexXs+1);
-      int indexYs = input.indexOf(',',indexXp+1);
-      int indexYp = input.indexOf(',',indexYs+1);
-      int indexZs = input.indexOf(',',indexYp+1);
-
-      long xsp = input.substring(0,indexXs).toInt();
-      long xpos = input.substring(indexXs+1,indexXp).toInt();
-      long ysp = input.substring(indexXp+1,indexYs).toInt();
-      long ypos = input.substring(indexYs+1,indexYp).toInt();
-      long zsp = input.substring(indexYp+1,indexZs).toInt();
-      long zpos = input.substring(indexZs+1).toInt();
-      //moveXYZ(xsp,xpos,ysp,ypos,zsp,zpos);
-                  
+  //if(!STOP)内に実行記述、緊急停止ボタンで停止
+  if(!STOP){
+  //loop内記述
+  
+  }else{
+    while(true){
       }
     }
   //Serial.println("loop");
