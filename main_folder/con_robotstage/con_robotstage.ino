@@ -25,6 +25,8 @@
 #define LIMIT_INT0_PIN_z    19
 #define LIMIT_INT1_PIN_z    18
 
+//緊急停止ボタン
+#define STOP_PIN 14
 #define CALIBSPEED -2000
 
 bool islimit0_x = false;
@@ -33,6 +35,7 @@ bool islimit0_y = false;
 bool islimit1_y = false;
 bool islimit0_z = false;
 bool islimit1_z = false;
+bool STOP = false;
 long move_position;
 
 bool serial_flag1 = false;
@@ -68,6 +71,9 @@ void flag_5() {
   islimit1_z = true;
 }
 
+ISR(PCINT1_vect) {
+  Serial.println("ピン変化割り込みが発生しました");
+}
 //x軸のステッパー変数
 AccelStepper stepper_x(
   AccelStepper::DRIVER,
@@ -123,14 +129,14 @@ void Calibration() {
   }
   
 //moveXYZ(x速度(<2000),x座標,y速度(<2000),y座標,z速度(<2000),z座標)
-void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_speed,long z_position){
+void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_speed,long z_position,long zforce){
   stepper_x.moveTo(x_position);
   stepper_y.moveTo(y_position);
   stepper_z.moveTo(z_position);
   stepper_x.setSpeed(x_speed);
   stepper_y.setSpeed(y_speed);
   stepper_z.setSpeed(z_speed);  
-  while(stepper_x.currentPosition()!= x_position | stepper_y.currentPosition()!=y_position | stepper_z.currentPosition()!=z_position){ 
+  while((stepper_x.currentPosition()!= x_position | stepper_y.currentPosition()!=y_position | stepper_z.currentPosition()!=z_position)&zforce<=15){ 
     if(stepper_x.currentPosition()==x_position){
       Serial.println("x stop");
       }
@@ -154,13 +160,32 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
   Serial.println("Done");
   }
 
-void moveX(long x_speed,long x_position){
-  stepper_x.moveTo(x_position);
-  stepper_x.setSpeed(x_speed);  
-  while(stepper_x.currentPosition()!=x_position){
-    Serial.print("x is =");
-    Serial.println(stepper_x.currentPosition());
-    stepper_x.runSpeedToPosition();          
+void moveToForceXYZ(){
+  
+  }
+void SerialRead(){
+    if(Serial.available()>0){
+    String input = Serial.readStringUntil('\n');
+    if(input == "Cal"){
+      Calibration();
+      //moveXYZ(1000,25000,1000,27000,1000,10000);      
+      }
+    else{
+      int indexXs = input.indexOf(',');
+      int indexXp = input.indexOf(',',indexXs+1);
+      int indexYs = input.indexOf(',',indexXp+1);
+      int indexYp = input.indexOf(',',indexYs+1);
+      int indexZs = input.indexOf(',',indexYp+1);
+
+      long xsp = input.substring(0,indexXs).toInt();
+      long xpos = input.substring(indexXs+1,indexXp).toInt();
+      long ysp = input.substring(indexXp+1,indexYs).toInt();
+      long ypos = input.substring(indexYs+1,indexYp).toInt();
+      long zsp = input.substring(indexYp+1,indexZs).toInt();
+      long zpos = input.substring(indexZs+1).toInt();
+      //moveXYZ(xsp,xpos,ysp,ypos,zsp,zpos);
+                  
+      }
     }
   }
 void setup() {
@@ -177,6 +202,7 @@ void setup() {
   pinMode(STEPPER_CCW_PIN_z,   OUTPUT);
   pinMode(LIMIT_INT0_PIN_z, INPUT_PULLUP);
   pinMode(LIMIT_INT1_PIN_z, INPUT_PULLUP);
+  pinMode(STOP_PIN, INPUT_PULLUP);
   //リミットセンサ割り込み
   attachInterrupt(digitalPinToInterrupt(LIMIT_INT0_PIN_x), flag_0, RISING);
   attachInterrupt(digitalPinToInterrupt(LIMIT_INT1_PIN_x), flag_1, RISING);
@@ -184,7 +210,9 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(LIMIT_INT1_PIN_y), flag_3, RISING);
   attachInterrupt(digitalPinToInterrupt(LIMIT_INT0_PIN_z), flag_4, RISING);
   attachInterrupt(digitalPinToInterrupt(LIMIT_INT1_PIN_z), flag_5, RISING);
-
+  //緊急停止ボタン割り込み
+  PCICR |= (1 << PCIE1);
+  PCMSK1 |= (1 << PCINT10);        // PCINT10（D14ピン)で割り込み
   // Init Serial
   Serial.begin(115200);
   // Init Stepper Motor
@@ -219,7 +247,7 @@ void loop() {
       long ypos = input.substring(indexYs+1,indexYp).toInt();
       long zsp = input.substring(indexYp+1,indexZs).toInt();
       long zpos = input.substring(indexZs+1).toInt();
-      moveXYZ(xsp,xpos,ysp,ypos,zsp,zpos);
+      //moveXYZ(xsp,xpos,ysp,ypos,zsp,zpos);
                   
       }
     }
