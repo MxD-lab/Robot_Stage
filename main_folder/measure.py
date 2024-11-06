@@ -1,15 +1,5 @@
-# client
-# 受信側
-# あとからこっち（受信側）を実行する。先に送信側(server_udp_main2.py)のコードを実行します．
-
-import socket
-import pickle
-import threading
 import time
 import numpy as np
-from multiprocessing.spawn import is_forking
-from zipimport import zipimporter
-from matplotlib.pyplot import axes, axis
 import nidaqmx
 from nidaqmx.constants import AcquisitionType, TaskMode
 from nidaqmx.constants import TerminalConfiguration
@@ -17,39 +7,11 @@ from nidaqmx.constants import READ_ALL_AVAILABLE
 from nidaqmx import stream_readers as sr
 import serial
 import csv
-import win_unicode_console
-import os
-import re
-import sys
-import traceback
-from threading import Thread, Lock
-from queue import Queue
-import signal
-from collections import deque
-import itertools
+import struct
 
 '''
 2022/06/09 プロセス間でのUDP通信できることを確認（ネットから拾ったコード動かしただけ）
 '''
-
-
-# 通信したいオブジェクトの定義
-# class xyz_data:
-#     def __init__(self, flo1, flo2, flo3, flo4):
-#         self.flo1 = flo1
-#         self.flo2 = flo2
-#         self.flo3 = flo3
-#         self.flo4 = flo4
-#         # self.flo5 = flo5
-#         # self.flo6 = flo6
-#         # self.flo7 = flo7
-#         # self.flo8 = flo8
-
-#     def print_data(self):
-#         print(self.flo1,self.flo2,self.flo3,self.flo4,self.flo5,self.flo6,self.flo7,self.flo8)
-src_ip_addr = '127.0.0.1'
-src_port = 50000
-buffer_size = 1024
 
 
 def change_power(raw_data):
@@ -124,8 +86,7 @@ class MoterControll():
 
     ###特例moveXYZ()呼び出し用メソッド、触覚センサを定位置に動かすメソッド
     def move_senpos(self):
-        #com = b"1000,25000,1000,27000,1000,36000\n" #本来
-        com = b"2000,25000,2000,27000,2000,6000\n" #テスト兼デバッグ
+        com = b"2000,25000,2000,27000,2000,36000\n" #本来
         self.serial.write(com)   
         while True:
           if self.serial.in_waiting > 0:
@@ -139,13 +100,14 @@ class MoterControll():
 
 #NiDaqとの接続、ロードセルと触覚センサの情報取得
 class DaqMeasure(MoterControll):
-    def __init__(self, device_name="Dev1", channels=6, sample_rate=1000, chunk_size=100):
+    def __init__(self, device_name="Dev1", channels=6, sample_rate=1000, chunk_size=500):
         self.device_name = device_name
         self.channels = channels
         self.sample_rate = sample_rate
         self.chunk_size = chunk_size  # 1回の読み取りで取得するサンプル数
         super().__init__()
 
+    #計測を行うメソッド呼び出しでロボットステージが動き出す
     def measurement(self, filename="daq_data_continuous.csv"):
         # CSVファイルをオープン
         with open(filename, mode='w', newline='') as file:
@@ -182,15 +144,14 @@ class DaqMeasure(MoterControll):
                             power = change_power(self.data[0:3])
                             for n in range(len(power)):
                                 self.data[n] = power[n,0]
-                            #print(self.data)
                             writer.writerow(self.data)
                         #シリアルで送信 
                         force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}\n'
-                        print(force)   
+                        #force =  struct.pack('fff',self.data[0],self.data[1],self.data[2])
+                        print(force)
                         self.serial.write(force.encode())
-                        print(f"z={self.data[2]}")
                 except KeyboardInterrupt:
-                    print("finish")
+                    print("計測終了")
 
 
     def get(self, channel):
@@ -200,4 +161,7 @@ class DaqMeasure(MoterControll):
 if __name__ == '__main__':
     ##この2つをどう動かすかスレッドにするかソケット通信にするか
     loadread = DaqMeasure()
-    loadread.measurement("daq_test.csv")
+    # loadread.calibration()
+    # loadread.move_senpos()
+    #loadread.measurement("daq_data_test.csv")
+    loadread.move_xyz(0,0,10000,0,0,-1000)

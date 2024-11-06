@@ -172,20 +172,50 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
     }
   Serial.println("Done");
   }
-
+bool  moving=false;
 //Pythonからうけた力までロボットステージを動かす
-void moveToForceXYZ(){
+void moveToForceX(float x_force, float toForce=5){
+  while(x_force <= toForce){
+    stepper_x.setSpeed(10);
+    stepper_x.runSpeed();
+    }
+  stepper_x.stop();
+  Serial.println("finish");
+  moving=false;  
   }
 
-  
+void moveToForceY(float y_force, float toForce=5){
+  while(y_force <= toForce){
+    stepper_y.setSpeed(10);
+    stepper_y.runSpeed();
+    }
+  stepper_y.stop();
+  Serial.println("finish");
+  moving=false;
+  }
+
+void moveToForceZ(float z_force, float toForce = 5) {
+  if (z_force < toForce) {
+    stepper_z.setSpeed(10);
+    stepper_z.runSpeed();
+  } else {
+    stepper_z.stop();
+    Serial.println("finish");
+    moving = false;
+  }
+}
+
+float getFx=0.0;
+float getFy=0.0;
+float getFz=0.0;
+
 void SerialRead(){
     if(Serial.available()>0){
     String input = Serial.readStringUntil('\n');
     if(input == "Cal"){
-      Calibration();
-      //moveXYZ(1000,25000,1000,27000,1000,10000);      
+      Calibration();    
       }
-    else{
+    else if(ReceiveDataNum(input)==5){
       int indexXs = input.indexOf(',');
       int indexXp = input.indexOf(',',indexXs+1);
       int indexYs = input.indexOf(',',indexXp+1);
@@ -198,11 +228,35 @@ void SerialRead(){
       long ypos = input.substring(indexYs+1,indexYp).toInt();
       long zsp = input.substring(indexYp+1,indexZs).toInt();
       long zpos = input.substring(indexZs+1).toInt();
-      //moveXYZ(xsp,xpos,ysp,ypos,zsp,zpos);
-                  
+      moveXYZ(xsp,xpos,ysp,ypos,zsp,zpos,0);           
+      }
+    else if(ReceiveDataNum(input)==2){
+      int indexXf = input.indexOf("x=") + 2;
+      int indexYf = input.indexOf("y=") + 2;
+      int indexZf = input.indexOf("z=") + 2;
+      float x,y,z;
+      x = input.substring(indexXf, input.indexOf(',', indexXf)).toFloat();
+      y = input.substring(indexYf, input.indexOf(',', indexYf)).toFloat();
+      z = input.substring(indexZf).toFloat();
+      getFx = x;
+      getFy = y;
+      getFz = z;
+      moving = true;
       }
     }
   }
+
+//受信したコマンドの制御個数を返す関数
+int ReceiveDataNum(String input){
+  int count = 0;
+  for(int i=0;i<input.length();i++){
+    if(input.charAt(i)==','){
+      count++;
+      }
+    }
+  return count;
+  }
+//セットアップ  
 void setup() {
   // Configure GPIO Pins
   pinMode(STEPPER_PULSE_PIN_x, OUTPUT);
@@ -226,8 +280,8 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(LIMIT_INT0_PIN_z), flag_4, RISING);
   attachInterrupt(digitalPinToInterrupt(LIMIT_INT1_PIN_z), flag_5, RISING);
   //緊急停止ボタン割り込み
-  PCICR |= (1 << PCIE1);
-  PCMSK1 |= (1 << PCINT10);        // PCINT10（D14ピン)で割り込み
+  PCICR |= (1 << PCIE1);            // PCINT10があるレジスタを割り込みに設定
+  PCMSK1 |= (1 << PCINT10);         // PCINT10（D14ピン)で緊急停止ボタン割り込み
   // Init Serial
   Serial.begin(115200);
   // Init Stepper Motor
@@ -237,14 +291,14 @@ void setup() {
   Serial.println("Setup");
 }
       
-
-
-
 void loop() {
   //if(!STOP)内に実行記述、緊急停止ボタンで停止
   if(!STOP){
   //loop内記述
-  
+  SerialRead();
+  if(moving){
+    moveToForceZ(getFz);
+    }
   }else{
     while(true){
       }
