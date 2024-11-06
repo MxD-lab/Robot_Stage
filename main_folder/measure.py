@@ -185,9 +185,10 @@ class DaqMeasure(MoterControll):
                             #print(self.data)
                             writer.writerow(self.data)
                         #シリアルで送信 
-                        force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}'   
+                        force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}\n'
+                        print(force)   
                         self.serial.write(force.encode())
-                        #print(f"z={self.data[2]}")
+                        print(f"z={self.data[2]}")
                 except KeyboardInterrupt:
                     print("finish")
 
