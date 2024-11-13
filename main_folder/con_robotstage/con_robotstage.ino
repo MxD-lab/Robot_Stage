@@ -39,9 +39,9 @@ bool STOP = false;
 bool fmoving=false;
 bool pmoving=false;
 
-float getFx=0.0;
-float getFy=0.0;
-float getFz=0.0;
+long setSpx=0;
+long setSpy=0;
+long setSpz=0;
 
 long getxsp;
 long getxpos;
@@ -155,8 +155,6 @@ void Calibration() {
   
 //moveXYZ(x速度(<2000),x座標,y速度(<2000),y座標,z速度(<2000),z座標)
 void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_speed,long z_position,long zforce){
-  Serial.print("now position");
-  Serial.println(stepper_z.currentPosition());
   stepper_x.moveTo(x_position);
   stepper_y.moveTo(y_position);
   stepper_z.moveTo(z_position);
@@ -197,33 +195,23 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
     // すべてのモーターが停止したか確認
     if (stepper_x.currentPosition() == x_position && stepper_y.currentPosition() == y_position && stepper_z.currentPosition() == z_position) {
       pmoving = false;  // 動作終了
-      Serial.println("Done");
-      Serial.println(stepper_z.currentPosition());
-      
+      Serial.println("Done");      
       }
     }
   }
 
-//Pythonからうけた力までロボットステージを動かす
-void moveToForceX(float x_force, float toForce=5){
-  while(x_force <= toForce){
-    stepper_x.setSpeed(10);
+//ロボットステージを動かす
+void moveToForceX(float x_speed){
+    stepper_x.setSpeed(x_speed);
     stepper_x.runSpeed();
-    }
-  stepper_x.stop();
-  Serial.println("finish");
   }
 
-void moveToForceY(float y_force, float toForce=5){
-  while(y_force <= toForce){
-    stepper_y.setSpeed(10);
+void moveToForceY(float y_speed){
+    stepper_y.setSpeed(y_speed);
     stepper_y.runSpeed();
-    }
-  stepper_y.stop();
-  Serial.println("finish");
   }
 
-void moveToForceZ(float z_speed=10) {
+void moveToForceZ(long z_speed) {
     stepper_z.setSpeed(z_speed);
     stepper_z.runSpeed();
 }
@@ -270,9 +258,9 @@ void SerialRead(){
       x = input.substring(indexXf, input.indexOf(',', indexXf)).toFloat();
       y = input.substring(indexYf, input.indexOf(',', indexYf)).toFloat();
       z = input.substring(indexZf).toFloat();
-      getFx = x;
-      getFy = y;
-      getFz = z;
+      setSpx = x;
+      setSpy = y;
+      setSpz = z;
       fmoving = true;
       }
     }
@@ -329,16 +317,17 @@ void loop() {
   if(!STOP){
   //loop内記述
     if(fmoving){
-      moveToForceZ(getFz);
+      moveToForceX(setSpx);
+      moveToForceY(setSpy);      
+      moveToForceZ(setSpz);
       }
     if(pmoving){
-      Serial.println(getzpos);
       moveXYZ(getxsp,getxpos,getysp,getypos,getzsp,getzpos,0);
       }
   }else{
-    getFx=0;
-    getFy=0;
-    getFz=0;
+    setSpx=0;
+    setSpy=0;
+    setSpz=0;
     getxsp=0;
     getxpos=0;
     getysp=0;

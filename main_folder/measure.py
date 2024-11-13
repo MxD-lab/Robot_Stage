@@ -53,8 +53,14 @@ class MoterControll():
     ###ロードセルとの接続をコンストラクタで実行
     def __init__(self,port="COM3",baudrate=115200):
         self.serial = serial.Serial(port,baudrate)
-        self.serial.setDTR(False)
-        time.sleep(3)
+        #self.serial.setDTR(False) 現状効果なし
+        while True:
+          if self.serial.in_waiting > 0:
+            response = self.serial.readline().decode('utf-8', errors='ignore').strip()
+            print("Arduino:", response)
+            if response == "Setup":
+                break
+        time.sleep(1)
         print("connect")
 
     ###シリアル通信経由のリセットでsetup()を再実行させる。
@@ -80,20 +86,10 @@ class MoterControll():
             if response == "fin Calibration":
                 break  
 
-    ###moveXYZ()呼び出し用メソッド
-    def move_xyz(self,x,y,z,xspeed=1000,yspeed=1000,zspeed=1000):
-        com = f"{xspeed},{x},{yspeed},{y},{zspeed},{z}\n"
-        self.serial.write(com.encode())
-        while True:
-          if self.serial.in_waiting > 0:
-            response = self.serial.readline().decode('utf-8', errors='ignore').strip()
-            print("Arduino:", response)
-            if response == "Done":
-                break         
-
     ###特例moveXYZ()呼び出し用メソッド、触覚センサを定位置に動かすメソッド
     def move_senpos(self):
-        com = b"2000,25000,2000,27000,2000,36000\n" #本来
+        #com = b"2000,25000,2000,27000,2000,36000\n" #本来
+        com = b"2000,5000,2000,4000,2000,8000\n" #テスト用
         self.serial.write(com)   
         while True:
           if self.serial.in_waiting > 0:
@@ -101,7 +97,17 @@ class MoterControll():
             print("Arduino:", response)
             if response == "Done":
                 break  
+
+    ###moveXYZ()呼び出し用メソッド
+    def move_xyz(self,x,y,z,xspeed=1000,yspeed=1000,zspeed=1000):
+        com = f"{xspeed},{x},{yspeed},{y},{zspeed},{z}\n"
+        self.serial.write(com.encode())
     
+    ####moveToForce~()呼び出し用メソッド
+    def moveToForce(self,xspeed=0,yspeed=0,zspeed=0):
+       com = f"x={xspeed},y={yspeed},z={zspeed}"
+       self.serial.write(com.encode())
+
     def move_stop(self):
         self.serial.write(b"STOP\n")
 
@@ -110,7 +116,7 @@ class MoterControll():
 
 #NiDaqとの接続、ロードセルと触覚センサの情報取得
 class DaqMeasure(MoterControll):
-    def __init__(self, device_name="Dev1", channels=6, sample_rate=1000, chunk_size=500):
+    def __init__(self, device_name="Dev1", channels=6, sample_rate=1000, chunk_size=50):
         self.device_name = device_name
         self.channels = channels
         self.sample_rate = sample_rate
@@ -143,7 +149,7 @@ class DaqMeasure(MoterControll):
                     sample_mode=AcquisitionType.CONTINUOUS
                 )
 
-                print("測定を開始します。Ctrl+Cで終了します。")
+                print("測定を開始")
 
                 try:
                     while True:
@@ -156,23 +162,35 @@ class DaqMeasure(MoterControll):
                             for n in range(len(power)):
                                 self.data[n] = power[n,0]
                             writer.writerow(self.data)
-                        #シリアルで送信 
                         force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}\n'
-                        #force =  struct.pack('fff',self.data[0],self.data[1],self.data[2])
                         print(force)
-                        #self.serial.write(force.encode())
+
+                        #################################################################################
+                        ####以下計測動作サンプル
+                        peak = 0
+                        self.moveToForce(0,0,100)
+                        print(f'超えた回数{peak}')
+                        if(self.data[2]>5 and peak==0):
+                            print('超えた')
+                            peak += 1
+                            self.move_xyz(0,0,5000,0,0,100)
+
+                        #######
+                        ##################################################################################
                 except KeyboardInterrupt:
                     print("計測終了")
 
 
     def get(self, channel):
         print(f"z={self.data[channel]}")
-    
+
+
+
 
 if __name__ == '__main__':
     ##この2つをどう動かすかスレッドにするかソケット通信にするか
     loadread = DaqMeasure()
     # loadread.calibration()
     # loadread.move_senpos()
-    #loadread.measurement("daq_data_test.csv")
-    loadread.move_xyz(0,0,-1000,0,0,1000)
+    #loadread.moveToForce(0,0,-1000)
+    loadread.measurement("daq_data_test.csv")
