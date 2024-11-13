@@ -52,6 +52,13 @@ def change_power(raw_data):
 class MoterControll():
     ###ロードセルとの接続をコンストラクタで実行
     def __init__(self,port="COM3",baudrate=115200):
+        self.serial = serial.Serial(port,baudrate)
+        self.serial.setDTR(False)
+        time.sleep(3)
+        print("connect")
+
+    ###シリアル通信経由のリセットでsetup()を再実行させる。
+    def reset(self,port="COM3",baudrate=115200):
         self.serial = serial.Serial(port, baudrate)
         while True:
           if self.serial.in_waiting > 0:
@@ -60,8 +67,8 @@ class MoterControll():
             if response == "Setup":
                 break
         time.sleep(1)
-        print("connect")
-
+        print("connect")  
+          
     ###キャリブレーション呼び出し用メソッドArduinoのCalibration()を呼び出す
     def calibration(self):
         self.serial.write(b"Cal\n")
@@ -94,6 +101,9 @@ class MoterControll():
             print("Arduino:", response)
             if response == "Done":
                 break  
+    
+    def move_stop(self):
+        self.serial.write(b"STOP\n")
 
     def close(self):
         self.serial.close()
@@ -104,10 +114,11 @@ class DaqMeasure(MoterControll):
         self.device_name = device_name
         self.channels = channels
         self.sample_rate = sample_rate
+
         self.chunk_size = chunk_size  # 1回の読み取りで取得するサンプル数
         super().__init__()
 
-    #計測を行うメソッド呼び出しでロボットステージが動き出す
+    #計測を行うメソッド呼び出し
     def measurement(self, filename="daq_data_continuous.csv"):
         # CSVファイルをオープン
         with open(filename, mode='w', newline='') as file:
@@ -149,7 +160,7 @@ class DaqMeasure(MoterControll):
                         force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}\n'
                         #force =  struct.pack('fff',self.data[0],self.data[1],self.data[2])
                         print(force)
-                        self.serial.write(force.encode())
+                        #self.serial.write(force.encode())
                 except KeyboardInterrupt:
                     print("計測終了")
 
@@ -164,4 +175,4 @@ if __name__ == '__main__':
     # loadread.calibration()
     # loadread.move_senpos()
     #loadread.measurement("daq_data_test.csv")
-    loadread.move_xyz(0,0,10000,0,0,-1000)
+    loadread.move_xyz(0,0,-1000,0,0,1000)
