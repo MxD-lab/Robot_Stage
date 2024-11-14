@@ -7,8 +7,7 @@ from nidaqmx.constants import READ_ALL_AVAILABLE
 from nidaqmx import stream_readers as sr
 import serial
 import csv
-import struct
-
+from threading import Thread, Event
 '''
 2022/06/09 プロセス間でのUDP通信できることを確認（ネットから拾ったコード動かしただけ）
 '''
@@ -75,6 +74,13 @@ class MoterControll():
         time.sleep(1)
         print("connect")  
           
+    def res_read(self):
+        if self.serial.in_waiting > 0:
+            response = self.serial.readline().decode('utf-8', errors='ignore').strip()
+        else:
+            response = 'Not response'
+        return response
+    
     ###キャリブレーション呼び出し用メソッドArduinoのCalibration()を呼び出す
     def calibration(self):
         self.serial.write(b"Cal\n")
@@ -120,69 +126,63 @@ class DaqMeasure(MoterControll):
         self.device_name = device_name
         self.channels = channels
         self.sample_rate = sample_rate
-
         self.chunk_size = chunk_size  # 1回の読み取りで取得するサンプル数
+        self.latest_data = None  # 最新の計測データを保持
+        self.running = Event()  # 計測の開始/停止を管理するイベント        
         super().__init__()
 
     #計測を行うメソッド呼び出し
     def measurement(self, filename="daq_data_continuous.csv"):
+        def measure_vi():
         # CSVファイルをオープン
-        with open(filename, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            
-            # ヘッダー行の書き込み
-            header = [f"Channel {i+1}" for i in range(self.channels)]
-            writer.writerow(header)
-            
-            # NI-DAQmxでアナログ入力タスクを作成
-            with nidaqmx.Task() as task:
-                # 各チャンネルをシングルエンドモードで設定
-                for i in range(self.channels):
-                    task.ai_channels.add_ai_voltage_chan(
-                        f"{self.device_name}/ai{i}",
-                        terminal_config=TerminalConfiguration.RSE
-                    )
+            with open(filename, mode='w', newline='') as file:
+                writer = csv.writer(file)
                 
-                # サンプリングレートと連続測定モードを設定
-                task.timing.cfg_samp_clk_timing(
-                    self.sample_rate,
-                    sample_mode=AcquisitionType.CONTINUOUS
-                )
+                # ヘッダー行の書き込み
+                header = [f"Channel {i+1}" for i in range(self.channels)]
+                writer.writerow(header)
+                
+                # NI-DAQmxでアナログ入力タスクを作成
+                with nidaqmx.Task() as task:
+                    # 各チャンネルをシングルエンドモードで設定
+                    for i in range(self.channels):
+                        task.ai_channels.add_ai_voltage_chan(
+                            f"{self.device_name}/ai{i}",
+                            terminal_config=TerminalConfiguration.RSE
+                        )
+                    
+                    # サンプリングレートと連続測定モードを設定
+                    task.timing.cfg_samp_clk_timing(
+                        self.sample_rate,
+                        sample_mode=AcquisitionType.CONTINUOUS
+                    )
 
-                print("測定を開始")
+                    print("測定を開始")
 
-                try:
-                    while True:
+                    while self.running.is_set():
                         # データをチャンクサイズ分取得
                         self.data_chunk = np.array(task.read(number_of_samples_per_channel=self.chunk_size),dtype=float)
                         # データを行ごとにCSVに保存
                         for i in range(self.chunk_size):
                             self.data = [channel_data[i] for channel_data in self.data_chunk]
                             power = change_power(self.data[0:3])
+                            self.latest_data = power
+                            #self.dataのロードセル部分を力変換かけたものに置き換え
                             for n in range(len(power)):
                                 self.data[n] = power[n,0]
                             writer.writerow(self.data)
+                        #行の先頭を表示
                         force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}\n'
-                        print(force)
+                        print(force)                       
+        self.running.set()
+        Thread(target=measure_vi, daemon=True).start()
 
-                        #################################################################################
-                        ####以下計測動作サンプル
-                        peak = 0
-                        self.moveToForce(0,0,100)
-                        print(f'超えた回数{peak}')
-                        if(self.data[2]>5 and peak==0):
-                            print('超えた')
-                            peak += 1
-                            self.move_xyz(0,0,5000,0,0,100)
+    def get_latest_data(self):
+        #print(self.latest_data)
+        return self.latest_data
 
-                        #######
-                        ##################################################################################
-                except KeyboardInterrupt:
-                    print("計測終了")
-
-
-    def get(self, channel):
-        print(f"z={self.data[channel]}")
+    def stop_measurement(self):
+        self.running.clear()
 
 
 
@@ -190,7 +190,31 @@ class DaqMeasure(MoterControll):
 if __name__ == '__main__':
     ##この2つをどう動かすかスレッドにするかソケット通信にするか
     loadread = DaqMeasure()
-    # loadread.calibration()
-    # loadread.move_senpos()
-    #loadread.moveToForce(0,0,-1000)
-    loadread.measurement("daq_data_test.csv")
+    loadread.calibration()
+    loadread.move_senpos()
+    #################################################################################
+    ####以下計測動作サンプル
+    loadread.moveToForce(0,0,-100)
+    try:
+        # 計測スレッドを開始
+        loadread.measurement("daq_data_test.csv")
+        # メインスレッドでArduinoを制御
+        while True:
+            latest_data = loadread.get_latest_data()
+            if latest_data is not None:
+                z_force = latest_data[2][0]  # z方向の力を取得
+                if z_force > 5:
+                    print(f"High force detected: z={z_force}, moving motor.")
+                    #loadread.move_xyz(0, 0, 8000, 0, 0, 100)
+                    #loadread.move_stop()
+                else:
+                    print(f"Force within range: z={z_force}")
+
+            time.sleep(0.5)
+
+    except KeyboardInterrupt:
+        loadread.move_stop()
+        loadread.stop_measurement()
+        print("Program interrupted")
+    #######
+    ##################################################################################

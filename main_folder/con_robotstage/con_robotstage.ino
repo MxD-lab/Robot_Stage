@@ -248,6 +248,7 @@ void SerialRead(){
       getzsp = zsp;
       getzpos = zpos;
       pmoving = true;
+      fmoving = false;
       //moveXYZ(xsp,xpos,ysp,ypos,zsp,zpos,0);           
       }
     else if(ReceiveDataNum(input)==2){
@@ -262,6 +263,7 @@ void SerialRead(){
       setSpy = y;
       setSpz = z;
       fmoving = true;
+      pmoving = false;
       }
     }
   }
