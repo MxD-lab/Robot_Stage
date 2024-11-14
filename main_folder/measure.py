@@ -77,8 +77,9 @@ class MoterControll():
     def res_read(self):
         if self.serial.in_waiting > 0:
             response = self.serial.readline().decode('utf-8', errors='ignore').strip()
+            print("Arduino:", response)
         else:
-            response = 'Not response'
+            response = '0'
         return response
     
     ###キャリブレーション呼び出し用メソッドArduinoのCalibration()を呼び出す
@@ -193,25 +194,112 @@ if __name__ == '__main__':
     loadread.calibration()
     loadread.move_senpos()
     #################################################################################
-    ####以下計測動作サンプル
-    loadread.moveToForce(0,0,-100)
+    ####以下計測動作サンプル###########################################################
+        # loadread.moveToForce(xspeed,yspeed,zspeed)
+        # while True:
+        #     if latest_data is not None:
+        #         ?_force = latest_data[?][0]  #z方向の力を取得
+        #         if ?_force >= N:
+        #             print(f"Set force detected: ?={?_force}")
+        #             loadread.move_stop()
+        #             break
+        #         else:
+        #             print(f"Force within range: ?={?_force}")
+        #     time.sleep(0.5)
+    ####上記を一つのシーケンスで順に動作していく運用
+
+    ##~~サンプル動作~~
+    ####Zを3N下げその後少しまって違う速度で5Nまで下げる
+    ####その後3Nまであげる
+    ####x方向に動かした後、y方向に動かす。
+    ####どちらも動いた後高さをそのままにもとの位置に斜めにもどす。
+    ####最後に開始位置にもどす
     try:
         # 計測スレッドを開始
         loadread.measurement("daq_data_test.csv")
+        #z軸方向動かす。
+        loadread.moveToForce(0,0,-20)
         # メインスレッドでArduinoを制御
         while True:
             latest_data = loadread.get_latest_data()
             if latest_data is not None:
-                z_force = latest_data[2][0]  # z方向の力を取得
-                if z_force > 5:
-                    print(f"High force detected: z={z_force}, moving motor.")
-                    #loadread.move_xyz(0, 0, 8000, 0, 0, 100)
-                    #loadread.move_stop()
+                z_force = latest_data[2][0]  #z方向の力を取得
+                print(type(z_force))
+                if z_force >= 3:
+                    print(f"Set force detected: z={z_force}")
+                    loadread.move_stop()
+                    break
                 else:
                     print(f"Force within range: z={z_force}")
+            time.sleep(0.5)
+        time.sleep(1)
 
+        loadread.moveToForce(0,0,-10)
+        while True:
+            latest_data = loadread.get_latest_data()
+            if latest_data is not None:
+                z_force = latest_data[2][0]  #z方向の力を取得
+                if z_force >= 5:
+                    print(f"Set force detected: z={z_force}")
+                    loadread.move_stop()
+                    break
+                else:
+                    print(f"Force: z={z_force}")
             time.sleep(0.5)
 
+        loadread.moveToForce(0,0,10)
+        while True:
+            loadread.res_read()
+            if loadread.res_read() != '0':
+                zpos = int(loadread.res_read())
+            latest_data = loadread.get_latest_data()
+            if latest_data is not None:
+                z_force = latest_data[2][0]  #z方向の力を取得
+                if z_force <= 3:
+                    print(f"Set force detected: z={z_force}")
+                    loadread.move_stop()
+                    break
+                else:
+                    print(f"Force: z={z_force}")
+            time.sleep(0.5)
+
+        loadread.moveToForce(10,0,0) #x方向を動かす
+        while True:
+            #loadread.res_read()
+            latest_data = loadread.get_latest_data()
+            if latest_data is not None:
+                x_force = latest_data[0][0] #x方向の力を取得
+                if x_force >= 3:
+                    print(f"Set force detected: x={x_force}")
+                    loadread.move_stop()
+                    break
+                else:
+                    print(f"Force: x={x_force}")
+            time.sleep(0.5)
+
+        loadread.moveToForce(0,10,0) #y方向を動かす
+        while True:
+            #loadread.res_read()
+            latest_data = loadread.get_latest_data()
+            if latest_data is not None:
+                y_force = latest_data[1][0] #x方向の力を取得
+                if y_force >= 3:
+                    print(f"Set force detected: y={y_force}")
+                    loadread.move_stop()
+                    break
+                else:
+                    print(f"Force: y={y_force}")
+            time.sleep(0.5)
+
+        loadread.move_xyz(25000,27000,zpos,100,100,0)
+        while True:
+            loadread.res_read()
+            if loadread.res_read() == 'Done':
+                break
+
+        loadread.move_senpos()
+
+    ########## CTRL+Cで終了        
     except KeyboardInterrupt:
         loadread.move_stop()
         loadread.stop_measurement()

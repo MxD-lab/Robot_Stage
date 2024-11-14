@@ -204,16 +204,19 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
 void moveToForceX(float x_speed){
     stepper_x.setSpeed(x_speed);
     stepper_x.runSpeed();
+    Serial.println(stepper_x.currentPosition());
   }
 
 void moveToForceY(float y_speed){
     stepper_y.setSpeed(y_speed);
     stepper_y.runSpeed();
+    Serial.println(stepper_y.currentPosition());
   }
 
 void moveToForceZ(long z_speed) {
     stepper_z.setSpeed(z_speed);
     stepper_z.runSpeed();
+    Serial.println(stepper_z.currentPosition());
 }
 
 
