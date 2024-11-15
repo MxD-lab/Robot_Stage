@@ -109,14 +109,17 @@ class MoterControll():
     def move_xyz(self,x,y,z,xspeed=1000,yspeed=1000,zspeed=1000):
         com = f"{xspeed},{x},{yspeed},{y},{zspeed},{z}\n"
         self.serial.write(com.encode())
+        #self.serial.flush()
     
     ####moveToForce~()呼び出し用メソッド
     def moveToForce(self,xspeed=0,yspeed=0,zspeed=0):
        com = f"x={xspeed},y={yspeed},z={zspeed}"
        self.serial.write(com.encode())
-
+       #self.serial.flush()
+       
     def move_stop(self):
         self.serial.write(b"STOP\n")
+        #self.serial.flush()
 
     def close(self):
         self.serial.close()
@@ -129,7 +132,7 @@ class DaqMeasure(MoterControll):
         self.sample_rate = sample_rate
         self.chunk_size = chunk_size  # 1回の読み取りで取得するサンプル数
         self.latest_data = None  # 最新の計測データを保持
-        self.running = Event()  # 計測の開始/停止を管理するイベント        
+        #self.running = Event()  # 計測の開始/停止を管理するイベント        
         super().__init__()
 
     #計測を行うメソッド呼び出し
@@ -175,15 +178,15 @@ class DaqMeasure(MoterControll):
                         #行の先頭を表示
                         force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}\n'
                         print(force)                       
-        self.running.set()
+        #self.running.set()
         Thread(target=measure_vi, daemon=True).start()
 
     def get_latest_data(self):
         #print(self.latest_data)
         return self.latest_data
 
-    def stop_measurement(self):
-        self.running.clear()
+    # def stop_measurement(self):
+    #     self.running.clear()
 
 
 
@@ -302,7 +305,7 @@ if __name__ == '__main__':
     ########## CTRL+Cで終了        
     except KeyboardInterrupt:
         loadread.move_stop()
-        loadread.stop_measurement()
+        #loadread.stop_measurement()
         print("Program interrupted")
     #######
     ##################################################################################

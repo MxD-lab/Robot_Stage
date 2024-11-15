@@ -230,6 +230,8 @@ void SerialRead(){
       }
     else if(input == "STOP"){
       STOP = true;
+      fmoving = false;
+      pmoving = false;
       }
     else if(ReceiveDataNum(input)==5){
       int indexXs = input.indexOf(',');
