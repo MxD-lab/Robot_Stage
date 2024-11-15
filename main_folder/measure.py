@@ -47,10 +47,12 @@ def change_power(raw_data):
 #Arduinoと接続、ロボットステージの制御用クラス
 class MotorControll(mp.Process):
     ###ロードセルとの接続をコンストラクタで実行
-    def __init__(self,queue,port="COM3",baudrate=115200):
+    def __init__(self,queue,stop_event,daq_stop_event,port="COM3",baudrate=115200):
         self.queue = queue
         self.port = port
         self.baudrate = baudrate
+        self.stop_event = stop_event
+        self.daq_stop_event = daq_stop_event
         super().__init__()
 
     ###シリアル通信経由のリセットでsetup()を再実行させる。
@@ -114,14 +116,17 @@ class MotorControll(mp.Process):
         self.serial.write(b"STOP\n")
         self.serial.flush()
 
-
     def close(self):
         self.serial.close()
+
+    def daq_start(self):
+        self.daq_measure = DaqMeasure(self.queue,self.daq_stop_event)
+        self.daq_measure.start()
+        print('Daq 計測開始')
 
     def run(self):
         try:
             self.serial = serial.Serial(self.port,self.baudrate)
-            #self.serial.setDTR(False) 現状効果なし
             while True:
                 if self.serial.in_waiting > 0:
                     response = self.serial.readline().decode('utf-8', errors='ignore').strip()
@@ -130,25 +135,42 @@ class MotorControll(mp.Process):
                         break
                 time.sleep(1)
                 print("connect")    
-            self.calibration()
-            self.move_senpos()
-            power = self.queue.get()
-            print(f'receive power = {power}')
+            # self.calibration()
+            # self.move_senpos()
+            ## daq計測開始
+            time.sleep(0.5)
+            self.daq_start()
+            while not self.stop_event.is_set():
+                if not self.queue.empty():
+                    power = self.queue.get()
+                    if power[2][0]:
+                        break
+                    print(f'receive power = {power}')
+            self.move_stop()
+
+
         except KeyboardInterrupt:
             self.close()
             print('通信終了')
+        finally:
+            if self.daq_measure:
+                self.daq_stop_event.set()
+                self.daq_measure.join()
+                print('Daq計測終了')
+            print('arduino 終了')
 
 
 #NiDaqとの接続、ロードセルと触覚センサの情報取得
 class DaqMeasure(mp.Process):
-    def __init__(self, queue, device_name="Dev1", channels=6, sample_rate=1000, chunk_size=50, filename="daq_data_continuous.csv"):
+    def __init__(self, queue, stop_event,device_name="Dev1", channels=6, sample_rate=1000, chunk_size=50, filename="daq_data_continuous.csv"):
         self.device_name = device_name
         self.channels = channels
         self.sample_rate = sample_rate
         self.chunk_size = chunk_size  # 1回の読み取りで取得するサンプル数
         self.latest_data = None  # 最新の計測データを保持
         self.filename = filename
-        self.queue = queue    
+        self.queue = queue
+        self.stop_event = stop_event    
         super().__init__()
 
     #計測を行うメソッド呼び出し
@@ -178,7 +200,7 @@ class DaqMeasure(mp.Process):
 
                 print("測定を開始")
                 try:
-                    while True:
+                    while not self.stop_event.is_set():
                         # データをチャンクサイズ分取得
                         self.data_chunk = np.array(task.read(number_of_samples_per_channel=self.chunk_size),dtype=float)
                         # データを行ごとにCSVに保存
@@ -202,8 +224,10 @@ class DaqMeasure(mp.Process):
 if __name__ == '__main__':
     ##この2つをどう動かすかスレッドにするかソケット通信にするか
     queue = mp.Queue()
-    loadread = DaqMeasure(queue)
-    motor = MotorControll(queue)
+    stop_event = mp.Event()
+    daq_stop_event = mp.Event()
+
+    motor = MotorControll(queue,stop_event,daq_stop_event)
     # loadread.calibration()
     # loadread.move_senpos()
     #################################################################################
@@ -229,10 +253,8 @@ if __name__ == '__main__':
     ####最後に開始位置にもどす
 
     try:
-        loadread.start()
         motor.start()
-        loadread.join()
-        motor.join()
+        #motor.join()
         # loadread.moveToForce(0,0,10)
         # while True:
         #     latest_data = loadread.get_latest_data()
@@ -299,12 +321,12 @@ if __name__ == '__main__':
         # loadread.move_senpos()
 
     ########## CTRL+Cで終了        
-    except KeyboardInterrupt:
-        loadread.terminate()
-        motor.terminate()
-        loadread.join()
-        motor.join()        
+    except KeyboardInterrupt:     
+        stop_event.set()
+        daq_stop_event.set()
         print("Program interrupted")
-    
+    finally:
+        motor.join()
+        print('fin')       
     #######
     ##################################################################################
