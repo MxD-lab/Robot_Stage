@@ -43,6 +43,66 @@ def change_power(raw_data):
 
     return res
 
+#NiDaqとの接続、ロードセルと触覚センサの情報取得
+class DaqMeasure(mp.Process):
+    def __init__(self, queue, stop_event,device_name="Dev1", channels=6, sample_rate=1000, chunk_size=50, filename="daq_data_continuous.csv"):
+        self.device_name = device_name
+        self.channels = channels
+        self.sample_rate = sample_rate
+        self.chunk_size = chunk_size  # 1回の読み取りで取得するサンプル数
+        self.latest_data = None  # 最新の計測データを保持
+        self.filename = filename
+        self.queue = queue
+        self.stop_event = stop_event    
+        super().__init__()
+
+    #計測を行うメソッド呼び出し
+    def run(self):
+    # CSVファイルをオープン
+        with open(self.filename, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            
+            # ヘッダー行の書き込み
+            header = [f"Channel {i+1}" for i in range(self.channels)]
+            writer.writerow(header)
+            
+            # NI-DAQmxでアナログ入力タスクを作成
+            with nidaqmx.Task() as task:
+                # 各チャンネルをシングルエンドモードで設定
+                for i in range(self.channels):
+                    task.ai_channels.add_ai_voltage_chan(
+                        f"{self.device_name}/ai{i}",
+                        terminal_config=TerminalConfiguration.RSE
+                    )
+                
+                # サンプリングレートと連続測定モードを設定
+                task.timing.cfg_samp_clk_timing(
+                    self.sample_rate,
+                    sample_mode=AcquisitionType.CONTINUOUS
+                )
+
+                print("測定を開始")
+                try:
+                    while not self.stop_event.is_set():
+                        # データをチャンクサイズ分取得
+                        self.data_chunk = np.array(task.read(number_of_samples_per_channel=self.chunk_size),dtype=float)
+                        # データを行ごとにCSVに保存
+                        for i in range(self.chunk_size):
+                            self.data = [channel_data[i] for channel_data in self.data_chunk]
+                            power = change_power(self.data[0:3])
+                            self.latest_data = power
+                            #queueで共有
+                            self.queue.put(power)
+                            #self.dataのロードセル部分を力変換かけたものに置き換え
+                            for n in range(len(power)):
+                                self.data[n] = power[n,0]
+                            writer.writerow(self.data)
+                        #行の先頭を表示
+                        force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}\n'
+                        print(force)                       
+                except KeyboardInterrupt:
+                    print('計測終了')
+                    return
 
 #Arduinoと接続、ロボットステージの制御用クラス
 class MotorControll(mp.Process):
@@ -106,7 +166,7 @@ class MotorControll(mp.Process):
         time.sleep(0.5)
     
     ####moveToForce~()呼び出し用メソッド
-    def moveToForce(self,xspeed=0,yspeed=0,zspeed=0):
+    def moveToSpeed(self,xspeed=0,yspeed=0,zspeed=0):
        com = f"x={xspeed},y={yspeed},z={zspeed}\n"
        self.serial.write(com.encode())
        self.serial.flush()
@@ -125,6 +185,8 @@ class MotorControll(mp.Process):
         print('Daq 計測開始')
 
     def run(self):
+        #状態管理用
+        state = 0
         try:
             self.serial = serial.Serial(self.port,self.baudrate)
             while True:
@@ -143,7 +205,24 @@ class MotorControll(mp.Process):
             while not self.stop_event.is_set():
                 if not self.queue.empty():
                     power = self.queue.get()
-                    if power[2][0]:
+                    if state == 0:
+                        self.moveToSpeed(0,0,10)
+                    elif state ==0 and power[2][0]>=3:
+                        self.move_stop()
+                        state += 1
+                    elif state == 1:
+                        time.sleep(1)
+                        state += 1
+                    elif state == 2:
+                        self.moveToSpeed(0,0,5)
+                    elif state == 2 and power[2][0] >= 5:
+                        self.moveToSpeed(0,0,-5)
+                        state += 1
+                    elif state == 3 and power[2][0] <= 3:
+                        self.move_stop()
+                        state += 1
+                    elif state == 4:
+                        print('動作終了')
                         break
                     print(f'receive power = {power}')
             self.move_stop()
@@ -152,74 +231,13 @@ class MotorControll(mp.Process):
         except KeyboardInterrupt:
             self.close()
             print('通信終了')
+
         finally:
             if self.daq_measure:
                 self.daq_stop_event.set()
                 self.daq_measure.join()
                 print('Daq計測終了')
             print('arduino 終了')
-
-
-#NiDaqとの接続、ロードセルと触覚センサの情報取得
-class DaqMeasure(mp.Process):
-    def __init__(self, queue, stop_event,device_name="Dev1", channels=6, sample_rate=1000, chunk_size=50, filename="daq_data_continuous.csv"):
-        self.device_name = device_name
-        self.channels = channels
-        self.sample_rate = sample_rate
-        self.chunk_size = chunk_size  # 1回の読み取りで取得するサンプル数
-        self.latest_data = None  # 最新の計測データを保持
-        self.filename = filename
-        self.queue = queue
-        self.stop_event = stop_event    
-        super().__init__()
-
-    #計測を行うメソッド呼び出し
-    def run(self):
-    # CSVファイルをオープン
-        with open(self.filename, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            
-            # ヘッダー行の書き込み
-            header = [f"Channel {i+1}" for i in range(self.channels)]
-            writer.writerow(header)
-            
-            # NI-DAQmxでアナログ入力タスクを作成
-            with nidaqmx.Task() as task:
-                # 各チャンネルをシングルエンドモードで設定
-                for i in range(self.channels):
-                    task.ai_channels.add_ai_voltage_chan(
-                        f"{self.device_name}/ai{i}",
-                        terminal_config=TerminalConfiguration.RSE
-                    )
-                
-                # サンプリングレートと連続測定モードを設定
-                task.timing.cfg_samp_clk_timing(
-                    self.sample_rate,
-                    sample_mode=AcquisitionType.CONTINUOUS
-                )
-
-                print("測定を開始")
-                try:
-                    while not self.stop_event.is_set():
-                        # データをチャンクサイズ分取得
-                        self.data_chunk = np.array(task.read(number_of_samples_per_channel=self.chunk_size),dtype=float)
-                        # データを行ごとにCSVに保存
-                        for i in range(self.chunk_size):
-                            self.data = [channel_data[i] for channel_data in self.data_chunk]
-                            power = change_power(self.data[0:3])
-                            self.latest_data = power
-                            #queueで共有
-                            self.queue.put(power)
-                            #self.dataのロードセル部分を力変換かけたものに置き換え
-                            for n in range(len(power)):
-                                self.data[n] = power[n,0]
-                            writer.writerow(self.data)
-                        #行の先頭を表示
-                        force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}\n'
-                        print(force)                       
-                except KeyboardInterrupt:
-                    print('計測終了')
-                    return
 
 if __name__ == '__main__':
     ##この2つをどう動かすかスレッドにするかソケット通信にするか
