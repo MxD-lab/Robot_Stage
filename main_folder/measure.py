@@ -7,9 +7,8 @@ from nidaqmx.constants import READ_ALL_AVAILABLE
 from nidaqmx import stream_readers as sr
 import serial
 import csv
-#from threading import Thread, Event
 import multiprocessing as mp
-from multiprocessing import Queue
+
 
 def change_power(raw_data):
     #ロードセルから得られた電圧値をひずみ値にする
@@ -160,8 +159,8 @@ class MotorControll(mp.Process):
 
     ###特例moveXYZ()呼び出し用メソッド、触覚センサを定位置に動かすメソッド
     def move_senpos(self):
-        #com = b"2000,25000,2000,27000,2000,36000\n" #本来
-        com = b"2000,5000,2000,4000,2000,8000\n" #テスト用
+        com = b"2000,25000,2000,27000,2000,36000\n" #本来
+        #com = b"2000,5000,2000,4000,2000,8000\n" #テスト用
         self.serial.write(com)   
         while True:
           if self.serial.in_waiting > 0:
@@ -196,10 +195,11 @@ class MotorControll(mp.Process):
        
     def move_stop(self):
         self.serial.write(b"STOP\n")
+        self.serial.flush()
         while True:
           if self.serial.in_waiting > 0:
             response = self.serial.readline().decode('utf-8', errors='ignore').strip()
-            print("Arduino:", response)
+            print("Stop cmd Arduino:res:", response)
             if response == "Done":
                 break 
 
@@ -225,53 +225,44 @@ class MotorControll(mp.Process):
                         break
                 time.sleep(0.1)   
             print("connect")
+
+            self.calibration()
+            self.move_senpos()
+
             ## daq計測開始
             time.sleep(0.5)
-            self.daq_start()
-
-            # self.calibration()
-            # self.move_senpos()
-            
+            self.daq_start()    
             while not self.stop_event.is_set():
                 if not self.queue.empty():
                     power = self.queue.get()
                     res = self.res_read()
                     print(f'receive power = {power},状態は{state},arduinoの応答は{res}')
                     if state == 0:
-                        self.calibration()
+                        self.moveToSpeed(0,0,10)
                         state +=1
                     elif state == 1:
-                        self.move_senpos()                       
-                        state += 1
-                    elif state == 2:
-                        self.moveToSpeed(0,0,-50)
-                        state += 1
-                    elif state == 3:
                         if power[2][0] >= 3:                            
                             self.move_stop()
-                            state += 1
-                    #     time.sleep(1)
-                    #     state += 1
+                            state += 1                      
+                    elif state == 2:
+                        time.sleep(5)
+                        state += 1
+                    elif state == 3:
+                        self.moveToSpeed(0,0,5)
+                        state += 1
                     elif state == 4:
-                        break
-                    #     self.moveToSpeed(0,0,5)
-                    # elif state == 2 and power[2][0] >= 5:
-                    #     self.moveToSpeed(0,0,-5)
-                    #     state += 1
-                    # elif state == 3 and power[2][0] <= 3:
-                    #     self.move_stop()
-                    #     state += 1
-                    # elif state == 4:
-                    #     print('動作終了')
-                    #     break
-                # else:
-                #     print('queue が空です')    
-
+                        if power[2][0] >= 5:
+                            self.move_stop()
+                            state += 1
+                    elif state == 5:
+                        self.move_senpos()
+                        state += 1
+                    elif state == 6:
+                        break  
             print('試行終了')
         except KeyboardInterrupt:
             self.close()
             print('通信終了')
-
         finally:
             if self.daq_measure:
                 self.daq_stop_event.set()
@@ -279,9 +270,11 @@ class MotorControll(mp.Process):
                 print('Daq計測終了')
             print('arduino 終了')
 
+
+
 if __name__ == '__main__':
     ##この2つをどう動かすかスレッドにするかソケット通信にするか
-    queue = mp.Queue(5)
+    queue = mp.Queue(3)
     stop_event = mp.Event()
     daq_stop_event = mp.Event()
 
