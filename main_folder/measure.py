@@ -99,7 +99,8 @@ class DaqMeasure(mp.Process):
                             writer.writerow(self.data)
                         #行の先頭を表示
                         force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}\n'
-                        print(force)                       
+                        #print(force)
+                        time.sleep(0.05)                       
                 except KeyboardInterrupt:
                     print('計測終了')
                     return
@@ -167,14 +168,25 @@ class MotorControll(mp.Process):
     
     ####moveToForce~()呼び出し用メソッド
     def moveToSpeed(self,xspeed=0,yspeed=0,zspeed=0):
-       com = f"x={xspeed},y={yspeed},z={zspeed}\n"
+       com = f"{xspeed},{yspeed},{zspeed}\n"
        self.serial.write(com.encode())
        self.serial.flush()
-       time.sleep(0.5)
+    #    while True:
+    #       if self.serial.in_waiting > 0:
+    #           break
+    #    self.serial.flush()
+    #    time.sleep(0.5)
+    #    print('send move to speed command')
+       
        
     def move_stop(self):
         self.serial.write(b"STOP\n")
         self.serial.flush()
+        # while True:
+        #   if self.serial.in_waiting > 0:
+        #       break
+        # time.sleep(0.5)
+        # print('send to stop command')
 
     def close(self):
         self.serial.close()
@@ -189,42 +201,49 @@ class MotorControll(mp.Process):
         state = 0
         try:
             self.serial = serial.Serial(self.port,self.baudrate)
+
             while True:
                 if self.serial.in_waiting > 0:
                     response = self.serial.readline().decode('utf-8', errors='ignore').strip()
                     print("Arduino:", response)
                     if response == "Setup":
                         break
-                time.sleep(1)
-                print("connect")    
-            # self.calibration()
-            # self.move_senpos()
+                time.sleep(0.1)   
+            print("connect")
             ## daq計測開始
             time.sleep(0.5)
             self.daq_start()
+
+            # self.calibration()
+            # self.move_senpos()
+            
             while not self.stop_event.is_set():
                 if not self.queue.empty():
                     power = self.queue.get()
+                    res = self.res_read()
+                    print(f'receive power = {power},状態は{state},arduinoの応答は{res}')
                     if state == 0:
-                        self.moveToSpeed(0,0,10)
-                    elif state ==0 and power[2][0]>=3:
-                        self.move_stop()
-                        state += 1
-                    elif state == 1:
-                        time.sleep(1)
-                        state += 1
-                    elif state == 2:
-                        self.moveToSpeed(0,0,5)
-                    elif state == 2 and power[2][0] >= 5:
-                        self.moveToSpeed(0,0,-5)
-                        state += 1
-                    elif state == 3 and power[2][0] <= 3:
-                        self.move_stop()
-                        state += 1
-                    elif state == 4:
-                        print('動作終了')
-                        break
-                    print(f'receive power = {power}')
+                        self.calibration()
+                        state +=1
+                    # elif state == 1 and power[2][0]>=3:
+                    #     self.move_stop()                        
+                    #     state += 1
+                    # elif state == 1:
+                    #     time.sleep(1)
+                    #     state += 1
+                    # elif state == 2:
+                    #     self.moveToSpeed(0,0,5)
+                    # elif state == 2 and power[2][0] >= 5:
+                    #     self.moveToSpeed(0,0,-5)
+                    #     state += 1
+                    # elif state == 3 and power[2][0] <= 3:
+                    #     self.move_stop()
+                    #     state += 1
+                    # elif state == 4:
+                    #     print('動作終了')
+                    #     break
+                # else:
+                #     print('queue が空です')    
             self.move_stop()
 
 
@@ -344,6 +363,7 @@ if __name__ == '__main__':
         daq_stop_event.set()
         print("Program interrupted")
     finally:
+        #motor.terminate()
         motor.join()
         print('fin')       
     #######
