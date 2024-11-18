@@ -9,6 +9,7 @@ import serial
 import csv
 #from threading import Thread, Event
 import multiprocessing as mp
+from multiprocessing import Queue
 
 def change_power(raw_data):
     #ロードセルから得られた電圧値をひずみ値にする
@@ -42,6 +43,12 @@ def change_power(raw_data):
     res = np.dot(road_mat, pow)
 
     return res
+
+class AutoFIFOQueue(Queue):
+    def put(self,item,block=True,timeout=None):
+        while self.full:
+            self.get()
+        super().put(item,block,timeout)
 
 #NiDaqとの接続、ロードセルと触覚センサの情報取得
 class DaqMeasure(mp.Process):
@@ -91,15 +98,14 @@ class DaqMeasure(mp.Process):
                         for i in range(self.chunk_size):
                             self.data = [channel_data[i] for channel_data in self.data_chunk]
                             power = change_power(self.data[0:3])
-                            self.latest_data = power
+                            #queueで共有
+                            self.queue.put_nowait(power)
                             #self.dataのロードセル部分を力変換かけたものに置き換え
                             for n in range(len(power)):
                                 self.data[n] = power[n,0]
                             writer.writerow(self.data)
                         #行の先頭を表示
                         force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}\n'
-                        #queueで共有
-                        self.queue.put(self.data[0:3])
                         #print(force)
                         time.sleep(0.05)                       
                 except KeyboardInterrupt:
@@ -231,7 +237,7 @@ class MotorControll(mp.Process):
             
             while not self.stop_event.is_set():
                 if not self.queue.empty():
-                    power = self.queue.get()
+                    power = self.queue.get_nowait()
                     res = self.res_read()
                     print(f'receive power = {power},状態は{state},arduinoの応答は{res}')
                     if state == 0:
@@ -244,7 +250,7 @@ class MotorControll(mp.Process):
                         self.moveToSpeed(0,0,-50)
                         state += 1
                     elif state == 3:
-                        if power[2] >= 3:                            
+                        if power[2][0] >= 3:                            
                             self.move_stop()
                             state += 1
                     #     time.sleep(1)
@@ -278,7 +284,7 @@ class MotorControll(mp.Process):
 
 if __name__ == '__main__':
     ##この2つをどう動かすかスレッドにするかソケット通信にするか
-    queue = mp.Queue()
+    queue = AutoFIFOQueue(maxsize=3)
     stop_event = mp.Event()
     daq_stop_event = mp.Event()
 
