@@ -77,7 +77,8 @@ class DaqMeasure(mp.Process):
                 
                 # サンプリングレートと連続測定モードを設定
                 task.timing.cfg_samp_clk_timing(
-                    self.sample_rate,
+                    rate = self.sample_rate,
+                    samps_per_chan = 2000,
                     sample_mode=AcquisitionType.CONTINUOUS
                 )
 
@@ -91,20 +92,27 @@ class DaqMeasure(mp.Process):
                             self.data = [channel_data[i] for channel_data in self.data_chunk]
                             power = change_power(self.data[0:3])
                             self.latest_data = power
-                            #queueで共有
-                            self.queue.put(power)
                             #self.dataのロードセル部分を力変換かけたものに置き換え
                             for n in range(len(power)):
                                 self.data[n] = power[n,0]
                             writer.writerow(self.data)
                         #行の先頭を表示
                         force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}\n'
+                        #queueで共有
+                        self.queue.put(self.data[0:3])
                         #print(force)
                         time.sleep(0.05)                       
                 except KeyboardInterrupt:
                     print('計測終了')
                     return
 
+def int_check(val):
+    try:
+        int(val)
+        return True
+    except ValueError:
+        return False
+    
 #Arduinoと接続、ロボットステージの制御用クラス
 class MotorControll(mp.Process):
     ###ロードセルとの接続をコンストラクタで実行
@@ -163,30 +171,34 @@ class MotorControll(mp.Process):
     def move_xyz(self,x,y,z,xspeed=1000,yspeed=1000,zspeed=1000):
         com = f"{xspeed},{x},{yspeed},{y},{zspeed},{z}\n"
         self.serial.write(com.encode())
-        self.serial.flush()
-        time.sleep(0.5)
+        while True:
+          if self.serial.in_waiting > 0:
+            response = self.serial.readline().decode('utf-8', errors='ignore').strip()
+            print("Arduino:", response)
+            if response == "Done":
+                break
     
     ####moveToForce~()呼び出し用メソッド
     def moveToSpeed(self,xspeed=0,yspeed=0,zspeed=0):
        com = f"{xspeed},{yspeed},{zspeed}\n"
        self.serial.write(com.encode())
        self.serial.flush()
-    #    while True:
-    #       if self.serial.in_waiting > 0:
-    #           break
-    #    self.serial.flush()
-    #    time.sleep(0.5)
-    #    print('send move to speed command')
+       while True:
+          if self.serial.in_waiting > 0:
+            response = self.serial.readline().decode('utf-8', errors='ignore').strip()
+            print("Arduino:", response)
+            if int_check(response):
+                break
        
        
     def move_stop(self):
         self.serial.write(b"STOP\n")
-        self.serial.flush()
-        # while True:
-        #   if self.serial.in_waiting > 0:
-        #       break
-        # time.sleep(0.5)
-        # print('send to stop command')
+        while True:
+          if self.serial.in_waiting > 0:
+            response = self.serial.readline().decode('utf-8', errors='ignore').strip()
+            print("Arduino:", response)
+            if response == "Done":
+                break 
 
     def close(self):
         self.serial.close()
@@ -225,13 +237,20 @@ class MotorControll(mp.Process):
                     if state == 0:
                         self.calibration()
                         state +=1
-                    # elif state == 1 and power[2][0]>=3:
-                    #     self.move_stop()                        
-                    #     state += 1
-                    # elif state == 1:
+                    elif state == 1:
+                        self.move_senpos()                       
+                        state += 1
+                    elif state == 2:
+                        self.moveToSpeed(0,0,-50)
+                        state += 1
+                    elif state == 3:
+                        if power[2] >= 3:                            
+                            self.move_stop()
+                            state += 1
                     #     time.sleep(1)
                     #     state += 1
-                    # elif state == 2:
+                    elif state == 4:
+                        break
                     #     self.moveToSpeed(0,0,5)
                     # elif state == 2 and power[2][0] >= 5:
                     #     self.moveToSpeed(0,0,-5)
@@ -244,9 +263,8 @@ class MotorControll(mp.Process):
                     #     break
                 # else:
                 #     print('queue が空です')    
-            self.move_stop()
 
-
+            print('試行終了')
         except KeyboardInterrupt:
             self.close()
             print('通信終了')
