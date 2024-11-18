@@ -44,15 +44,10 @@ def change_power(raw_data):
 
     return res
 
-class AutoFIFOQueue(Queue):
-    def put(self,item,block=True,timeout=None):
-        while self.full:
-            self.get()
-        super().put(item,block,timeout)
 
 #NiDaqとの接続、ロードセルと触覚センサの情報取得
 class DaqMeasure(mp.Process):
-    def __init__(self, queue, stop_event,device_name="Dev1", channels=6, sample_rate=1000, chunk_size=50, filename="daq_data_continuous.csv"):
+    def __init__(self, queue, stop_event,device_name="Dev1", channels=6, sample_rate=1000, chunk_size=100, filename="daq_data_continuous.csv"):
         self.device_name = device_name
         self.channels = channels
         self.sample_rate = sample_rate
@@ -99,7 +94,9 @@ class DaqMeasure(mp.Process):
                             self.data = [channel_data[i] for channel_data in self.data_chunk]
                             power = change_power(self.data[0:3])
                             #queueで共有
-                            self.queue.put_nowait(power)
+                            if self.queue.full():
+                                self.queue.get()
+                            self.queue.put(power)
                             #self.dataのロードセル部分を力変換かけたものに置き換え
                             for n in range(len(power)):
                                 self.data[n] = power[n,0]
@@ -237,7 +234,7 @@ class MotorControll(mp.Process):
             
             while not self.stop_event.is_set():
                 if not self.queue.empty():
-                    power = self.queue.get_nowait()
+                    power = self.queue.get()
                     res = self.res_read()
                     print(f'receive power = {power},状態は{state},arduinoの応答は{res}')
                     if state == 0:
@@ -284,7 +281,7 @@ class MotorControll(mp.Process):
 
 if __name__ == '__main__':
     ##この2つをどう動かすかスレッドにするかソケット通信にするか
-    queue = AutoFIFOQueue(maxsize=3)
+    queue = mp.Queue(5)
     stop_event = mp.Event()
     daq_stop_event = mp.Event()
 
