@@ -205,35 +205,63 @@ void moveToForceX(float x_speed){
     stepper_x.setSpeed(x_speed);
     stepper_x.runSpeed();
     Serial.println(stepper_x.currentPosition());
+    Serial.println("moving");
   }
 
 void moveToForceY(float y_speed){
     stepper_y.setSpeed(y_speed);
     stepper_y.runSpeed();
     Serial.println(stepper_y.currentPosition());
+    Serial.println("moving");
   }
 
 void moveToForceZ(long z_speed) {
     stepper_z.setSpeed(z_speed);
     stepper_z.runSpeed();
     Serial.println(stepper_z.currentPosition());
+    Serial.println("moving");
 }
 
 
-
+void Stop(){
+    setSpx=0;
+    setSpy=0;
+    setSpz=0;
+    getxsp=0;
+    getxpos=0;
+    getysp=0;
+    getypos=0;
+    getzsp=0;
+    getzpos=0;
+    stepper_z.stop();
+    stepper_y.stop();
+    stepper_x.stop();
+    while(stepper_x.isRunning() and stepper_y.isRunning() and stepper_z.isRunning()){
+      stepper_x.run();
+      stepper_y.run();
+      stepper_z.run();
+      }
+    Serial.println("Done");
+  }
+  
 void SerialRead(){
     if(Serial.available()>0){
     String input = Serial.readStringUntil('\n');
+    //Serial.flush();
     if(input == "Cal"){
       STOP = false;
+      Serial.println("receve cal");
       Calibration();    
       }
-    else if(input == "STOP"){
+    if(input == "STOP"){
       STOP = true;
       fmoving = false;
       pmoving = false;
+      Serial.println("receve stop");
+      Stop();
       }
     else if(ReceiveDataNum(input)==5){
+      STOP = false;
       int indexXs = input.indexOf(',');
       int indexXp = input.indexOf(',',indexXs+1);
       int indexYs = input.indexOf(',',indexXp+1);
@@ -257,13 +285,14 @@ void SerialRead(){
       //moveXYZ(xsp,xpos,ysp,ypos,zsp,zpos,0);           
       }
     else if(ReceiveDataNum(input)==2){
-      int indexXf = input.indexOf("x=") + 2;
-      int indexYf = input.indexOf("y=") + 2;
-      int indexZf = input.indexOf("z=") + 2;
-      float x,y,z;
-      x = input.substring(indexXf, input.indexOf(',', indexXf)).toFloat();
-      y = input.substring(indexYf, input.indexOf(',', indexYf)).toFloat();
-      z = input.substring(indexZf).toFloat();
+      STOP = false;
+      int indexXf = input.indexOf(',');
+      int indexYf = input.indexOf(',',indexXf+1);
+      int indexZf = input.indexOf(',',indexYf+1);
+      long x,y,z;
+      x = input.substring(0, indexXf).toInt();
+      y = input.substring(indexXf+1, indexYf).toInt();
+      z = input.substring(indexYf+1).toInt();
       setSpx = x;
       setSpy = y;
       setSpz = z;
@@ -331,16 +360,12 @@ void loop() {
     if(pmoving){
       moveXYZ(getxsp,getxpos,getysp,getypos,getzsp,getzpos,0);
       }
-  }else{
-    setSpx=0;
-    setSpy=0;
-    setSpz=0;
-    getxsp=0;
-    getxpos=0;
-    getysp=0;
-    getypos=0;
-    getzsp=0;
-    getzpos=0;
-    }
-  //Serial.println("loop");
+  }
+//  else{
+//    moveToForceX(0);
+//    moveToForceY(0);      
+//    moveToForceZ(0);
+//    moveXYZ(0,0,0,0,0,0,0);    
+//    }
+  //Serial.println(STOP);
 }

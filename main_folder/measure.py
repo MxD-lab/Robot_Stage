@@ -184,18 +184,19 @@ class MotorControll(mp.Process):
     def moveToSpeed(self,xspeed=0,yspeed=0,zspeed=0):
        com = f"{xspeed},{yspeed},{zspeed}\n"
        self.serial.write(com.encode())
-       self.serial.flush()
+       #self.serial.flush()
        while True:
           if self.serial.in_waiting > 0:
             response = self.serial.readline().decode('utf-8', errors='ignore').strip()
             print("Arduino:", response)
-            if int_check(response):
+            if response == "moving":
                 break
        
        
     def move_stop(self):
         self.serial.write(b"STOP\n")
-        self.serial.flush()
+        print('Stop')
+        #self.serial.flush()
         while True:
           if self.serial.in_waiting > 0:
             response = self.serial.readline().decode('utf-8', errors='ignore').strip()
@@ -274,7 +275,7 @@ class MotorControll(mp.Process):
 
 if __name__ == '__main__':
     ##この2つをどう動かすかスレッドにするかソケット通信にするか
-    queue = mp.Queue(3)
+    queue = mp.Queue(1)
     stop_event = mp.Event()
     daq_stop_event = mp.Event()
 
