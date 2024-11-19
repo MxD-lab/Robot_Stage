@@ -247,14 +247,22 @@ class MotorControll(mp.Process):
                         else:
                             state +=1
                     elif state == 1:
+                        time.sleep(5)
+                        # for i range(10):
+                        #     self.move_xyz(25000,27000,z,0,0,0)
                         state += 1
                     #     if power[2][0] >= 3:                            
                     #         self.move_stop()
                     #         state += 1                      
                     elif state == 2:
+                        if power[2][0] <= 5:
+                            self.move_xyz(25000,27000,z,0,0,10)
+                            z = z +1
+                        else:
+                            state +=1
                     #     time.sleep(5)
                     #     state += 1
-                    # elif state == 3:
+                    elif state == 3:
                     #     self.moveToSpeed(0,0,5)
                     #     state += 1
                     # elif state == 4:
