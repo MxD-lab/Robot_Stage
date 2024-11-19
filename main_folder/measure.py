@@ -159,7 +159,8 @@ class MotorControll(mp.Process):
 
     ###特例moveXYZ()呼び出し用メソッド、触覚センサを定位置に動かすメソッド
     def move_senpos(self):
-        com = b"2000,25000,2000,27000,2000,36000\n" #本来
+        #com = b"2000,25000,2000,27000,2000,36000\n" #本来sensor付き
+        com = b"8000,25000,8000,27000,8000,36900\n" #test
         #com = b"2000,5000,2000,4000,2000,8000\n" #テスト用
         self.serial.write(com)   
         while True:
@@ -188,7 +189,7 @@ class MotorControll(mp.Process):
        while True:
           if self.serial.in_waiting > 0:
             response = self.serial.readline().decode('utf-8', errors='ignore').strip()
-            print("Arduino:", response)
+            print("move cmd Arduino:", response)
             if response == "moving":
                 break
        
@@ -232,33 +233,38 @@ class MotorControll(mp.Process):
 
             ## daq計測開始
             time.sleep(0.5)
-            self.daq_start()    
+            self.daq_start()  
+            z = 36900  
             while not self.stop_event.is_set():
                 if not self.queue.empty():
                     power = self.queue.get()
                     res = self.res_read()
                     print(f'receive power = {power},状態は{state},arduinoの応答は{res}')
                     if state == 0:
-                        self.moveToSpeed(0,0,10)
-                        state +=1
+                        if power[2][0] <= 3:
+                            self.move_xyz(25000,27000,z,0,0,10)
+                            z = z +1
+                        else:
+                            state +=1
                     elif state == 1:
-                        if power[2][0] >= 3:                            
-                            self.move_stop()
-                            state += 1                      
+                        state += 1
+                    #     if power[2][0] >= 3:                            
+                    #         self.move_stop()
+                    #         state += 1                      
                     elif state == 2:
-                        time.sleep(5)
-                        state += 1
-                    elif state == 3:
-                        self.moveToSpeed(0,0,5)
-                        state += 1
-                    elif state == 4:
-                        if power[2][0] >= 5:
-                            self.move_stop()
-                            state += 1
-                    elif state == 5:
-                        self.move_senpos()
-                        state += 1
-                    elif state == 6:
+                    #     time.sleep(5)
+                    #     state += 1
+                    # elif state == 3:
+                    #     self.moveToSpeed(0,0,5)
+                    #     state += 1
+                    # elif state == 4:
+                    #     if power[2][0] >= 5:
+                    #         self.move_stop()
+                    #         state += 1
+                    # elif state == 5:
+                    #     self.move_senpos()
+                    #     state += 1
+                    # elif state == 6:
                         break  
             print('試行終了')
         except KeyboardInterrupt:
@@ -275,7 +281,7 @@ class MotorControll(mp.Process):
 
 if __name__ == '__main__':
     ##この2つをどう動かすかスレッドにするかソケット通信にするか
-    queue = mp.Queue(1)
+    queue = mp.Queue(3)
     stop_event = mp.Event()
     daq_stop_event = mp.Event()
 
