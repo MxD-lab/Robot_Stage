@@ -27,7 +27,7 @@
 
 //緊急停止ボタン
 #define STOP_PIN 14
-#define CALIBSPEED -2000
+#define CALIBSPEED -10000
 
 bool islimit0_x = false;
 bool islimit1_x = false;
@@ -224,37 +224,22 @@ void moveToForceZ(long z_speed) {
 
 
 void Stop(){
-    setSpx=0;
-    setSpy=0;
-    setSpz=0;
-    getxsp=0;
-    getxpos=0;
-    getysp=0;
-    getypos=0;
-    getzsp=0;
-    getzpos=0;
-    stepper_z.stop();
-    stepper_y.stop();
-    stepper_x.stop();
-    while(stepper_x.isRunning() and stepper_y.isRunning() and stepper_z.isRunning()){
-      stepper_x.run();
-      stepper_y.run();
-      stepper_z.run();
-      }
-    Serial.println("Done");
+    stepper_z.disableOutputs();
+    stepper_y.disableOutputs();
+    stepper_x.disableOutputs();
+    Serial.println("stoping");        
   }
   
 void SerialRead(){
     if(Serial.available()>0){
     String input = Serial.readStringUntil('\n');
-    //Serial.flush();
     if(input == "Cal"){
       STOP = false;
       Serial.println("receve cal");
       Calibration();    
       }
     if(input == "STOP"){
-      STOP = true;
+      STOP = true;      
       fmoving = false;
       pmoving = false;
       Serial.println("receve stop");
@@ -341,14 +326,13 @@ void setup() {
   // Init Serial
   Serial.begin(115200);
   // Init Stepper Motor
-  stepper_x.setMaxSpeed(2000);  // 脱調防止
-  stepper_y.setMaxSpeed(2000);  // 脱調防止
-  stepper_z.setMaxSpeed(2000);  // 脱調防止
+  stepper_x.setMaxSpeed(10000);  // 脱調防止
+  stepper_y.setMaxSpeed(10000);  // 脱調防止
+  stepper_z.setMaxSpeed(10000);  // 脱調防止
   Serial.println("Setup");
 }
       
 void loop() {
-  //if(!STOP)内に実行記述、緊急停止ボタンで停止
   SerialRead();
   if(!STOP){
   //loop内記述
@@ -360,12 +344,9 @@ void loop() {
     if(pmoving){
       moveXYZ(getxsp,getxpos,getysp,getypos,getzsp,getzpos,0);
       }
-  }
-//  else{
-//    moveToForceX(0);
-//    moveToForceY(0);      
-//    moveToForceZ(0);
-//    moveXYZ(0,0,0,0,0,0,0);    
-//    }
+  }else{
+    Stop();
+    Serial.println("Done");
+    }
   //Serial.println(STOP);
 }
