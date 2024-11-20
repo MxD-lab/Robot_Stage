@@ -168,22 +168,15 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
   if (pmoving) {
     if (stepper_x.currentPosition() != x_position) {
       stepper_x.runSpeedToPosition();
-      } else {
-      Serial.println("x stop");
       }
 
     if (stepper_y.currentPosition() != y_position) {
       stepper_y.runSpeedToPosition();
-      } else {
-      Serial.println("y stop");
       }
 
     if (stepper_z.currentPosition() != z_position && zforce <= 15) {
       stepper_z.runSpeedToPosition();
-      } else {
-      Serial.println("z stop");
-      }
-
+      } 
     // 現在の位置を表示
     Serial.print("x = ");
     Serial.println(stepper_x.currentPosition());
@@ -202,6 +195,7 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
 
 //ロボットステージを動かす
 void moveToForceX(float x_speed){
+    stepper_x.enableOutputs();
     stepper_x.setSpeed(x_speed);
     stepper_x.runSpeed();
     Serial.println(stepper_x.currentPosition());
@@ -209,6 +203,7 @@ void moveToForceX(float x_speed){
   }
 
 void moveToForceY(float y_speed){
+    stepper_y.enableOutputs();
     stepper_y.setSpeed(y_speed);
     stepper_y.runSpeed();
     Serial.println(stepper_y.currentPosition());
@@ -216,10 +211,16 @@ void moveToForceY(float y_speed){
   }
 
 void moveToForceZ(long z_speed) {
-    stepper_z.setSpeed(z_speed);
-    stepper_z.runSpeed();
-    Serial.println(stepper_z.currentPosition());
-    Serial.println("moving");
+  if(STOP){
+      stepper_z.setSpeed(0);
+      stepper_z.stop();
+    }else{
+      stepper_z.enableOutputs();
+      stepper_z.setSpeed(z_speed);
+      stepper_z.runSpeed();
+      Serial.println(stepper_z.currentPosition());
+      Serial.println("moving");
+    }
 }
 
 
@@ -231,60 +232,60 @@ void Stop(){
   }
   
 void SerialRead(){
-    if(Serial.available()>0){
-    String input = Serial.readStringUntil('\n');
-    if(input == "Cal"){
-      STOP = false;
-      Serial.println("receve cal");
-      Calibration();    
-      }
-    if(input == "STOP"){
-      STOP = true;      
-      fmoving = false;
-      pmoving = false;
-      Serial.println("receve stop");
-      Stop();
-      }
-    else if(ReceiveDataNum(input)==5){
-      STOP = false;
-      int indexXs = input.indexOf(',');
-      int indexXp = input.indexOf(',',indexXs+1);
-      int indexYs = input.indexOf(',',indexXp+1);
-      int indexYp = input.indexOf(',',indexYs+1);
-      int indexZs = input.indexOf(',',indexYp+1);
-
-      long xsp = input.substring(0,indexXs).toInt();
-      long xpos = input.substring(indexXs+1,indexXp).toInt();
-      long ysp = input.substring(indexXp+1,indexYs).toInt();
-      long ypos = input.substring(indexYs+1,indexYp).toInt();
-      long zsp = input.substring(indexYp+1,indexZs).toInt();
-      long zpos = input.substring(indexZs+1).toInt();
-      getxsp = xsp;
-      getxpos = xpos;
-      getysp = ysp;
-      getypos = ypos;
-      getzsp = zsp;
-      getzpos = zpos;
-      pmoving = true;
-      fmoving = false;
-      //moveXYZ(xsp,xpos,ysp,ypos,zsp,zpos,0);           
-      }
-    else if(ReceiveDataNum(input)==2){
-      STOP = false;
-      int indexXf = input.indexOf(',');
-      int indexYf = input.indexOf(',',indexXf+1);
-      int indexZf = input.indexOf(',',indexYf+1);
-      long x,y,z;
-      x = input.substring(0, indexXf).toInt();
-      y = input.substring(indexXf+1, indexYf).toInt();
-      z = input.substring(indexYf+1).toInt();
-      setSpx = x;
-      setSpy = y;
-      setSpz = z;
-      fmoving = true;
-      pmoving = false;
-      }
-    }
+    while(Serial.available()>0){
+      String input = Serial.readStringUntil('\n');
+      if(input == "Cal"){
+        STOP = false;
+        Serial.println("receve cal");
+        Calibration();    
+        }
+      if(input == "STOP"){
+        STOP = true;      
+        fmoving = false;
+        pmoving = false;
+        Serial.println("receve stop");
+        Stop();
+        }
+      else if(ReceiveDataNum(input)==5){
+        STOP = false;
+        int indexXs = input.indexOf(',');
+        int indexXp = input.indexOf(',',indexXs+1);
+        int indexYs = input.indexOf(',',indexXp+1);
+        int indexYp = input.indexOf(',',indexYs+1);
+        int indexZs = input.indexOf(',',indexYp+1);
+  
+        long xsp = input.substring(0,indexXs).toInt();
+        long xpos = input.substring(indexXs+1,indexXp).toInt();
+        long ysp = input.substring(indexXp+1,indexYs).toInt();
+        long ypos = input.substring(indexYs+1,indexYp).toInt();
+        long zsp = input.substring(indexYp+1,indexZs).toInt();
+        long zpos = input.substring(indexZs+1).toInt();
+        getxsp = xsp;
+        getxpos = xpos;
+        getysp = ysp;
+        getypos = ypos;
+        getzsp = zsp;
+        getzpos = zpos;
+        pmoving = true;
+        fmoving = false;
+        //moveXYZ(xsp,xpos,ysp,ypos,zsp,zpos,0);           
+        }
+      else if(ReceiveDataNum(input)==2){
+        STOP = false;
+        int indexXf = input.indexOf(',');
+        int indexYf = input.indexOf(',',indexXf+1);
+        int indexZf = input.indexOf(',',indexYf+1);
+        long x,y,z;
+        x = input.substring(0, indexXf).toInt();
+        y = input.substring(indexXf+1, indexYf).toInt();
+        z = input.substring(indexYf+1).toInt();
+        setSpx = x;
+        setSpy = y;
+        setSpz = z;
+        fmoving = true;
+        pmoving = false;
+        }
+     }
   }
 
 //受信したコマンドの制御個数を返す関数
