@@ -162,8 +162,8 @@ class MotorControll(mp.Process):
     ###特例moveXYZ()呼び出し用メソッド、触覚センサを定位置に動かすメソッド
     def move_senpos(self):
         #com = b"2000,25000,2000,27000,2000,36000\n" #本来sensor付き
-        #com = b"8000,25000,8000,27000,8000,36000\n" #test
-        com = b"2000,5000,2000,4000,2000,5000\n" #テスト用
+        com = b"8000,25000,8000,27000,8000,36000\n" #test
+        #com = b"2000,5000,2000,4000,2000,5000\n" #テスト用
         self.serial.write(com)
         while True:
           if self.serial.in_waiting > 0:
@@ -204,6 +204,15 @@ class MotorControll(mp.Process):
             #     zpos = int(response.split("=")[1]) 
         #return xpos,ypos,zpos
     
+    def keep_force(self,xpos,ypos,zpos,power,f,axis):
+        if axis == 'z':
+            if power[2][0] <= f:
+                self.move_xyz(xpos,ypos,zpos,0,0,10)
+                zpos = zpos +1
+            else:
+                self.move_xyz(xpos,ypos,zpos,0,0,-10)
+                zpos = zpos -1
+        return zpos
     ####moveToForce~()呼び出し用メソッド
     def moveToSpeed(self,xspeed=0,yspeed=0,zspeed=0):
        com = f"{xspeed},{yspeed},{zspeed}\n"
@@ -250,15 +259,18 @@ class MotorControll(mp.Process):
                         break
                 time.sleep(0.1)   
             print("connect")
-            ## daq計測開始
-            time.sleep(0.5)
-            self.daq_start()  
+ 
 
             self.calibration()
             self.move_senpos()
-            #self.move_senpos()
-            #print(f"xのポジション{xpos}、ｙのポジション{ypos}、ｚのポジション{zpos}")
-  
+
+            ## daq計測開始
+            time.sleep(0.5)
+            self.daq_start() 
+
+            xpos = 25000
+            ypos = 27000
+            zpos = 36000
             while not self.stop_event.is_set():
                 if not self.queue.empty():
                     power = self.queue.get()
@@ -266,30 +278,34 @@ class MotorControll(mp.Process):
                     print(f'receive power = {power},状態は{state},arduinoの応答は{res}')
                     if state == 0:
                         if power[2][0] <= 3:
-                            self.move_xyz(xpos,ypos,zpos,0,0,10)
                             zpos = zpos +1
+                            self.move_xyz(xpos,ypos,zpos,0,0,10)
                         else:
                             state +=1
                     elif state == 1:
-                        time.sleep(5)
-                        # for i in range(10):
-                        #     self.move_xyz(25000,27000,z,0,0,0)
-                        state += 1
-                    #     if power[2][0] >= 3:                            
-                    #         self.move_stop()
-                    #         state += 1                      
+                        for i in range(10):
+                            power = self.queue.get()
+                            print(f'receive power = {power},状態は{state}')
+                            if power[2][0] <= 3:
+                                zpos = zpos +1
+                                self.move_xyz(xpos,ypos,zpos,0,0,5)
+                            else:
+                                zpos = zpos -1
+                                self.move_xyz(xpos,ypos,zpos,0,0,5)
+                            time.sleep(0.05)
+                        state += 1                    
                     elif state == 2:
                         if power[2][0] <= 5:
-                            self.move_xyz(xpos,ypos,zpos,0,0,10)
                             zpos = zpos +1
+                            self.move_xyz(xpos,ypos,zpos,0,0,10)
                         else:
                             state +=1
                     #     time.sleep(5)
                     #     state += 1
                     elif state == 3:
-                    #     self.moveToSpeed(0,0,5)
-                    #     state += 1
-                    # elif state == 4:
+                         self.move_xyz(25000,27000,36000,50,50,50)
+                         state += 1
+                    elif state == 4:
                     #     if power[2][0] >= 5:
                     #         self.move_stop()
                     #         state += 1
