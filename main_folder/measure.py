@@ -8,7 +8,7 @@ from nidaqmx import stream_readers as sr
 import serial
 import csv
 import multiprocessing as mp
-
+from datetime import datetime
 
 def change_power(raw_data):
     #ロードセルから得られた電圧値をひずみ値にする
@@ -64,7 +64,7 @@ class DaqMeasure(mp.Process):
             writer = csv.writer(file)
             
             # ヘッダー行の書き込み
-            header = [f"Channel {i+1}" for i in range(self.channels)]
+            header =  ["Timestamp"]+[f"Channel {i+1}" for i in range(self.channels)]
             writer.writerow(header)
             
             # NI-DAQmxでアナログ入力タスクを作成
@@ -88,6 +88,8 @@ class DaqMeasure(mp.Process):
                     while not self.stop_event.is_set():
                         # データをチャンクサイズ分取得
                         self.data_chunk = np.array(task.read(number_of_samples_per_channel=self.chunk_size),dtype=float)
+                        #時刻の取得（分：秒）秒は小数点第一位まで
+                        timestamp = datetime.now().strftime("%M:%S.%f")[:-3]
                         # データを行ごとにCSVに保存
                         for i in range(self.chunk_size):
                             self.data = [channel_data[i] for channel_data in self.data_chunk]
@@ -99,11 +101,11 @@ class DaqMeasure(mp.Process):
                             #self.dataのロードセル部分を力変換かけたものに置き換え
                             for n in range(len(power)):
                                 self.data[n] = power[n,0]
-                            writer.writerow(self.data)
+                            writer.writerow([timestamp]+self.data)
                         #行の先頭を表示
                         force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}\n'
                         #print(force)
-                        time.sleep(0.05)                       
+                        #time.sleep(0.05)                       
                 except KeyboardInterrupt:
                     print('計測終了')
                     return
@@ -160,16 +162,30 @@ class MotorControll(mp.Process):
     ###特例moveXYZ()呼び出し用メソッド、触覚センサを定位置に動かすメソッド
     def move_senpos(self):
         #com = b"2000,25000,2000,27000,2000,36000\n" #本来sensor付き
-        com = b"8000,25000,8000,27000,8000,36900\n" #test
-        #com = b"2000,5000,2000,4000,2000,8000\n" #テスト用
-        self.serial.write(com)   
+        #com = b"8000,25000,8000,27000,8000,36000\n" #test
+        com = b"2000,5000,2000,4000,2000,5000\n" #テスト用
+        self.serial.write(com)
         while True:
           if self.serial.in_waiting > 0:
             response = self.serial.readline().decode('utf-8', errors='ignore').strip()
-            print("Arduino:", response)
+            print("Arduino:", response)  
             if response == "Done":
-                break  
+                break
+            # try:
+            #     if response.startswith("x="):
+            #         xpos = int(response.split("=")[1])
+            # #     print(f'xの現在のポジションは{xpos}')
+            #     if response.startswith("y="):
+            #         ypos = int(response.split("=")[1])
+            # #     print(f'xの現在のポジションは{ypos}')
+            #     if response.startswith("z="):
+            #         zpos = int(response.split("=")[1]) 
+            # #     print(f'xの現在のポジションは{zpos}'
+            # except (ValueError,AttributeError) as e:
+            #     print(e)
+            #     continue    
 
+    
     ###moveXYZ()呼び出し用メソッド
     def move_xyz(self,x,y,z,xspeed=1000,yspeed=1000,zspeed=1000):
         com = f"{xspeed},{x},{yspeed},{y},{zspeed},{z}\n"
@@ -180,6 +196,13 @@ class MotorControll(mp.Process):
             print("Arduino:", response)
             if response == "Done":
                 break
+            # if response.split("=")[0]=="x":
+            #     xpos = int(response.split("=")[1])
+            # if response.split("=")[0]=="y":
+            #     ypos = int(response.split("=")[1])
+            # if response.split("=")[0]=="z":
+            #     zpos = int(response.split("=")[1]) 
+        #return xpos,ypos,zpos
     
     ####moveToForce~()呼び出し用メソッド
     def moveToSpeed(self,xspeed=0,yspeed=0,zspeed=0):
@@ -227,14 +250,15 @@ class MotorControll(mp.Process):
                         break
                 time.sleep(0.1)   
             print("connect")
-
-            self.calibration()
-            self.move_senpos()
-
             ## daq計測開始
             time.sleep(0.5)
             self.daq_start()  
-            z = 36900  
+
+            self.calibration()
+            self.move_senpos()
+            #self.move_senpos()
+            #print(f"xのポジション{xpos}、ｙのポジション{ypos}、ｚのポジション{zpos}")
+  
             while not self.stop_event.is_set():
                 if not self.queue.empty():
                     power = self.queue.get()
@@ -242,13 +266,13 @@ class MotorControll(mp.Process):
                     print(f'receive power = {power},状態は{state},arduinoの応答は{res}')
                     if state == 0:
                         if power[2][0] <= 3:
-                            self.move_xyz(25000,27000,z,0,0,10)
-                            z = z +1
+                            self.move_xyz(xpos,ypos,zpos,0,0,10)
+                            zpos = zpos +1
                         else:
                             state +=1
                     elif state == 1:
                         time.sleep(5)
-                        # for i range(10):
+                        # for i in range(10):
                         #     self.move_xyz(25000,27000,z,0,0,0)
                         state += 1
                     #     if power[2][0] >= 3:                            
@@ -256,8 +280,8 @@ class MotorControll(mp.Process):
                     #         state += 1                      
                     elif state == 2:
                         if power[2][0] <= 5:
-                            self.move_xyz(25000,27000,z,0,0,10)
-                            z = z +1
+                            self.move_xyz(xpos,ypos,zpos,0,0,10)
+                            zpos = zpos +1
                         else:
                             state +=1
                     #     time.sleep(5)
