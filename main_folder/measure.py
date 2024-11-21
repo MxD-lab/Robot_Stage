@@ -204,6 +204,7 @@ class MotorControll(mp.Process):
             #     zpos = int(response.split("=")[1]) 
         #return xpos,ypos,zpos
     
+    ###力を一定に保つための関数ループ内で使用、xpos,ypos,zposが座標,fがキープする力、powerがniからの取得データ
     def keep_forceZ(self,xpos,ypos,zpos,power,f):
         if power[2][0] <= f:
             zpos = zpos +1
@@ -222,7 +223,7 @@ class MotorControll(mp.Process):
 
     def keep_forceY(self,xpos,ypos,zpos,power,f):
         if power[1][0] <= f:
-            ypos = ypos +1
+            ypos = ypos -1
             self.move_xyz(xpos,ypos,zpos,0,1,0)
         else:
             time.sleep(1)
@@ -239,7 +240,7 @@ class MotorControll(mp.Process):
             if response == "moving":
                 break
        
-       
+    ######使用しない   
     def move_stop(self):
         self.serial.write(b"STOP\n")
         print('Stop')
@@ -254,12 +255,35 @@ class MotorControll(mp.Process):
     def close(self):
         self.serial.close()
 
+    #####niでの計測をするプロセスを立てる
     def daq_start(self):
         self.daq_measure = DaqMeasure(self.queue,self.daq_stop_event)
         self.daq_measure.start()
         print('Daq 計測開始')
 
+    ######動作記述########
     def run(self):
+        #####以下サンプル########################################
+        #####シリアルでArduinoと通信開始,キャリブレーションを行ってセンサ近くまで天板を動かす。座標はx=25000,y=27000,z=36000
+        #####センサポジションを動かしたのちNiDaqでの計測開始
+        #####while内でループするためstateで状態遷移をする
+        #####self.queue.get()でNiDaqからのデータ取得、power[0][0]=x,power[1][0]=y,power[2][0]=z
+        #####
+        #####～～～～～～～～本サンプルの動作手順～～～～～～～～～～
+        #####荷重方向に3Nかかるまで押す
+        #####何秒間かキープ
+        #####荷重方向に5Nかかるまで押す
+        #####何秒間かキープ
+        #####3Nに戻す
+        #####何秒間かx方向に動かす
+        #####-y方向に動かす。(x,yはマイナス方向に動かすとロードセルの力がプラス方向になる)
+        #####x,-y方向のななめに動かす。
+        #####もとのポジションに動かす。
+        #####終了
+        #####～～～～～～～～～～～～～～～～～～～～～～～～～～～～～
+        #####
+        #####基本的に制御はmove_xyz()でおこない、荷重方向にキープしたい場合はkeep_forceZ()を呼ぶ
+        #####range(x)のxで長い時間やるのか短い時間やるのかを決める。
         #状態管理用
         state = 0
         try:
@@ -357,112 +381,20 @@ class MotorControll(mp.Process):
 
 
 if __name__ == '__main__':
-    ##この2つをどう動かすかスレッドにするかソケット通信にするか
+
     queue = mp.Queue(3)
     stop_event = mp.Event()
     daq_stop_event = mp.Event()
 
     motor = MotorControll(queue,stop_event,daq_stop_event)
-    # loadread.calibration()
-    # loadread.move_senpos()
-    #################################################################################
-    ####以下計測動作サンプル###########################################################
-        # loadread.moveToForce(xspeed,yspeed,zspeed)
-        # while True:
-        #     if latest_data is not None:
-        #         ?_force = latest_data[?][0]  #z方向の力を取得
-        #         if ?_force >= N:
-        #             print(f"Set force detected: ?={?_force}")
-        #             loadread.move_stop()
-        #             break
-        #         else:
-        #             print(f"Force within range: ?={?_force}")
-        #     time.sleep(0.5)
-    ####上記を一つのシーケンスで順に動作していく運用
-
-    ##~~サンプル動作~~
-    ####Zを3N下げその後少しまって違う速度で5Nまで下げる
-    ####その後3Nまであげる
-    ####x方向に動かした後、y方向に動かす。
-    ####どちらも動いた後高さをそのままにもとの位置に斜めにもどす。
-    ####最後に開始位置にもどす
 
     try:
         motor.start()
-        #motor.join()
-        # loadread.moveToForce(0,0,10)
-        # while True:
-        #     latest_data = loadread.get_latest_data()
-        #     if latest_data is not None:
-        #         z_force = latest_data[2][0]  #z方向の力を取得
-        #         if z_force >= 5:
-        #             print(f"Set force detected: z={z_force}")
-        #             loadread.move_stop()
-        #             break
-        #         else:
-        #             print(f"Force: z={z_force}")
-        #     time.sleep(0.5)
-
-        # loadread.moveToForce(0,0,-10)
-        # while True:
-        #     loadread.res_read()
-        #     if loadread.res_read() != '0':
-        #         zpos = int(loadread.res_read())
-        #     latest_data = loadread.get_latest_data()
-        #     if latest_data is not None:
-        #         z_force = latest_data[2][0]  #z方向の力を取得
-        #         if z_force <= 3:
-        #             print(f"Set force detected: z={z_force}")
-        #             loadread.move_stop()
-        #             break
-        #         else:
-        #             print(f"Force: z={z_force}")
-        #     time.sleep(0.5)
-
-        # loadread.moveToForce(10,0,0) #x方向を動かす
-        # while True:
-        #     #loadread.res_read()
-        #     latest_data = loadread.get_latest_data()
-        #     if latest_data is not None:
-        #         x_force = latest_data[0][0] #x方向の力を取得
-        #         if x_force >= 3:
-        #             print(f"Set force detected: x={x_force}")
-        #             loadread.move_stop()
-        #             break
-        #         else:
-        #             print(f"Force: x={x_force}")
-        #     time.sleep(0.5)
-
-        # loadread.moveToForce(0,10,0) #y方向を動かす
-        # while True:
-        #     #loadread.res_read()
-        #     latest_data = loadread.get_latest_data()
-        #     if latest_data is not None:
-        #         y_force = latest_data[1][0] #x方向の力を取得
-        #         if y_force >= 3:
-        #             print(f"Set force detected: y={y_force}")
-        #             loadread.move_stop()
-        #             break
-        #         else:
-        #             print(f"Force: y={y_force}")
-        #     time.sleep(0.5)
-
-        # loadread.move_xyz(25000,27000,zpos,100,100,0)
-        # while True:
-        #     loadread.res_read()
-        #     if loadread.res_read() == 'Done':
-        #         break
-
-        # loadread.move_senpos()
-
-    ########## CTRL+Cで終了        
+           
     except KeyboardInterrupt:     
         stop_event.set()
         daq_stop_event.set()
         print("Program interrupted")
     finally:
-        #motor.terminate()
         motor.join()
         print('fin')       
-    #######
-    ##################################################################################
