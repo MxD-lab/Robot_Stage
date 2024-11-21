@@ -211,6 +211,22 @@ class MotorControll(mp.Process):
         else:
             time.sleep(1)
         return zpos
+
+    def keep_forceX(self,xpos,ypos,zpos,power,f):
+        if power[0][0] <= f:
+            xpos = xpos -1
+            self.move_xyz(xpos,ypos,zpos,1,0,0)
+        else:
+            time.sleep(1)
+        return xpos
+
+    def keep_forceY(self,xpos,ypos,zpos,power,f):
+        if power[1][0] <= f:
+            ypos = ypos +1
+            self.move_xyz(xpos,ypos,zpos,0,1,0)
+        else:
+            time.sleep(1)
+        return ypos        
     ####moveToForce~()呼び出し用メソッド
     def moveToSpeed(self,xspeed=0,yspeed=0,zspeed=0):
        com = f"{xspeed},{yspeed},{zspeed}\n"
@@ -284,7 +300,6 @@ class MotorControll(mp.Process):
                         for i in range(10):
                             power = self.queue.get()
                             zpos = self.keep_forceZ(xpos,ypos,zpos,power,3)
-                            time.sleep(0.05)
                         state += 1                    
                     elif state == 2:
                         if power[2][0] <= 5:
@@ -293,21 +308,39 @@ class MotorControll(mp.Process):
                         else:
                             state +=1
                     elif state == 3:
+                        for i in range(10):
+                            power = self.queue.get()
+                            zpos = self.keep_forceZ(xpos,ypos,zpos,power,5)
+                        state += 1
+                    elif state == 4:
                         if power[2][0] >= 3:
                             zpos = zpos -1
                             self.move_xyz(xpos,ypos,zpos,0,0,10)
                         else:
                             state += 1
-                    elif state == 4:
-                        if power[0][0] <= 2:
+                    elif state == 5:
+                        # if power[0][0] <= 2:
+                        for i in range(100):
                             xpos = xpos -1
                             self.move_xyz(xpos,ypos,zpos,10,0,0)
-                        else:
-                            state +=1
-                    elif state == 5:
+                        # else:
+                            #state +=1
+                        state += 1
+                    elif state == 6:
+                        for i in range(50):
+                            ypos = ypos + 1
+                            self.move_xyz(xpos,ypos,zpos,0,10,0)
+                        state += 1
+                    elif state ==7:
+                        for i in range(200):
+                            ypos = ypos + 1
+                            xpos = xpos - 1
+                            self.move_xyz(xpos,ypos,zpos,10,10,0)
+                        state +=1
+                    elif state == 8:
                         self.move_xyz(25000,27000,36000,20,20,20)
                         state +=1
-                    elif state == 6:
+                    elif state == 9:
                         break  
             print('試行終了')
         except KeyboardInterrupt:
