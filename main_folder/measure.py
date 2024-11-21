@@ -162,7 +162,7 @@ class MotorControll(mp.Process):
     ###特例moveXYZ()呼び出し用メソッド、触覚センサを定位置に動かすメソッド
     def move_senpos(self):
         #com = b"2000,25000,2000,27000,2000,36000\n" #本来sensor付き
-        com = b"8000,25000,8000,27000,8000,35000\n" #test
+        com = b"8000,25000,8000,27000,8000,36000\n" #test
         #com = b"2000,5000,2000,4000,2000,5000\n" #テスト用
         self.serial.write(com)
         while True:
@@ -204,14 +204,12 @@ class MotorControll(mp.Process):
             #     zpos = int(response.split("=")[1]) 
         #return xpos,ypos,zpos
     
-    def keep_force(self,xpos,ypos,zpos,power,f,axis):
-        if axis == 'z':
-            if power[2][0] <= f:
-                self.move_xyz(xpos,ypos,zpos,0,0,10)
-                zpos = zpos +1
-            else:
-                self.move_xyz(xpos,ypos,zpos,0,0,-10)
-                zpos = zpos -1
+    def keep_forceZ(self,xpos,ypos,zpos,power,f):
+        if power[2][0] <= f:
+            zpos = zpos +1
+            self.move_xyz(xpos,ypos,zpos,0,0,1)
+        else:
+            time.sleep(1)
         return zpos
     ####moveToForce~()呼び出し用メソッド
     def moveToSpeed(self,xspeed=0,yspeed=0,zspeed=0):
@@ -270,7 +268,7 @@ class MotorControll(mp.Process):
 
             xpos = 25000
             ypos = 27000
-            zpos = 35000
+            zpos = 36000
             while not self.stop_event.is_set():
                 if not self.queue.empty():
                     power = self.queue.get()
@@ -285,14 +283,7 @@ class MotorControll(mp.Process):
                     elif state == 1:
                         for i in range(10):
                             power = self.queue.get()
-                            print(f'receive power = {power},状態は{state}')
-                            if power[2][0] <= 3:
-                                zpos = zpos +1
-                                self.move_xyz(xpos,ypos,zpos,0,0,1)
-                            else:
-                                # zpos = zpos -1
-                                # self.move_xyz(xpos,ypos,zpos,0,0,5)
-                                time.sleep(0.1)
+                            zpos = self.keep_forceZ(xpos,ypos,zpos,power,3)
                             time.sleep(0.05)
                         state += 1                    
                     elif state == 2:
@@ -314,12 +305,13 @@ class MotorControll(mp.Process):
                         else:
                             state +=1
                     elif state == 5:
-                        self.move_xyz(25000,27000,35000,20,20,20)
+                        self.move_xyz(25000,27000,36000,20,20,20)
                         state +=1
                     elif state == 6:
                         break  
             print('試行終了')
         except KeyboardInterrupt:
+            self.move_senpos()
             self.close()
             print('通信終了')
         finally:
