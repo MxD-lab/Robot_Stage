@@ -29,6 +29,9 @@
 #define STOP_PIN 14
 #define CALIBSPEED -10000
 
+//計測用トリガーピン
+#define Tri 27
+
 bool islimit0_x = false;
 bool islimit1_x = false;
 bool islimit0_y = false;
@@ -177,6 +180,7 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
     if (stepper_z.currentPosition() != z_position && zforce <= 15) {
       stepper_z.runSpeedToPosition();
       } 
+      
     // 現在の位置を表示
     Serial.print("x = ");
     Serial.println(stepper_x.currentPosition());
@@ -192,7 +196,14 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
       }
     }
   }
-
+  
+void trigger(){
+  digitalWrite(Tri,HIGH);
+  Serial.println("Done");
+  delay(100);
+  digitalWrite(Tri,LOW);
+  }
+  
 //ロボットステージを動かす
 void moveToForceX(float x_speed){
     stepper_x.enableOutputs();
@@ -246,6 +257,9 @@ void SerialRead(){
         Serial.println("receve stop");
         Stop();
         }
+      if(input == "Tri"){
+        trigger();
+        }  
       else if(ReceiveDataNum(input)==5){
         STOP = false;
         int indexXs = input.indexOf(',');
@@ -314,6 +328,7 @@ void setup() {
   pinMode(LIMIT_INT0_PIN_z, INPUT_PULLUP);
   pinMode(LIMIT_INT1_PIN_z, INPUT_PULLUP);
   pinMode(STOP_PIN, INPUT_PULLUP);
+  pinMode(Tri,OUTPUT);
   //リミットセンサ割り込み
   attachInterrupt(digitalPinToInterrupt(LIMIT_INT0_PIN_x), flag_0, RISING);
   attachInterrupt(digitalPinToInterrupt(LIMIT_INT1_PIN_x), flag_1, RISING);

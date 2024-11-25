@@ -46,7 +46,7 @@ def change_power(raw_data):
 
 #NiDaqとの接続、ロードセルと触覚センサの情報取得
 class DaqMeasure(mp.Process):
-    def __init__(self, queue, stop_event,device_name="Dev1", channels=6, sample_rate=1000, chunk_size=100, filename="daq_data_continuous.csv"):
+    def __init__(self, queue, trigger_queue,stop_event,device_name="Dev1", channels=6, sample_rate=1000, chunk_size=100, filename="daq_data_continuous.csv"):
         self.device_name = device_name
         self.channels = channels
         self.sample_rate = sample_rate
@@ -54,8 +54,12 @@ class DaqMeasure(mp.Process):
         self.latest_data = None  # 最新の計測データを保持
         self.filename = filename
         self.queue = queue
-        self.stop_event = stop_event    
+        self.stop_event = stop_event
+        self.state = 0
+        self.trigger_queue = trigger_queue
+        self.trigger_flag = False    
         super().__init__()
+
 
     #計測を行うメソッド呼び出し
     def run(self):
@@ -64,7 +68,7 @@ class DaqMeasure(mp.Process):
             writer = csv.writer(file)
             
             # ヘッダー行の書き込み
-            header =  ["Timestamp"]+[f"Channel {i+1}" for i in range(self.channels)]
+            header =  ["Timestamp"]+[f"Channel {i+1}" for i in range(self.channels)]+["Trigger"]
             writer.writerow(header)
             
             # NI-DAQmxでアナログ入力タスクを作成
@@ -98,10 +102,13 @@ class DaqMeasure(mp.Process):
                             if self.queue.full():
                                 self.queue.get()
                             self.queue.put(power)
-                            #self.dataのロードセル部分を力変換かけたものに置き換え
+                            # Trigger列の値を設定
+                            trigger_value = 1 if not self.trigger_queue.empty() else 0
+                            if not self.trigger_queue.empty():
+                                self.trigger_queue.get()  # トリガーを消費
                             for n in range(len(power)):
                                 self.data[n] = power[n,0]
-                            writer.writerow([timestamp]+self.data)
+                            writer.writerow([timestamp]+self.data+[trigger_value])
                         #行の先頭を表示
                         force = f'x={self.data[0]},y={self.data[1]},z={self.data[2]}\n'
                         #print(force)
@@ -120,12 +127,13 @@ def int_check(val):
 #Arduinoと接続、ロボットステージの制御用クラス
 class MotorControll(mp.Process):
     ###ロードセルとの接続をコンストラクタで実行
-    def __init__(self,queue,stop_event,daq_stop_event,port="COM3",baudrate=115200):
+    def __init__(self,queue,trigger_queue,stop_event,daq_stop_event,port="COM3",baudrate=115200):
         self.queue = queue
         self.port = port
         self.baudrate = baudrate
         self.stop_event = stop_event
         self.daq_stop_event = daq_stop_event
+        self.trigger_queue = trigger_queue
         super().__init__()
 
     ###シリアル通信経由のリセットでsetup()を再実行させる。
@@ -158,12 +166,25 @@ class MotorControll(mp.Process):
             print("Arduino:", response)
             if response == "fin Calibration":
                 break  
+    
+    def measure_triger(self):
+        self.serial.write(b"Tri\n")
+        if self.trigger_queue.full():
+            self.trigger_queue.get()
+        self.trigger_queue.put(1)
+        print("trigger")
+        while True:
+          if self.serial.in_waiting > 0:
+            response = self.serial.readline().decode('utf-8', errors='ignore').strip()
+            print("Arduino:", response)  
+            if response == "Done":
+                break
 
     ###特例moveXYZ()呼び出し用メソッド、触覚センサを定位置に動かすメソッド
     def move_senpos(self):
         #com = b"2000,25000,2000,27000,2000,36000\n" #本来sensor付き
-        com = b"8000,25000,8000,27000,8000,36000\n" #test
-        #com = b"2000,5000,2000,4000,2000,5000\n" #テスト用
+        #com = b"8000,25000,8000,27000,8000,36000\n" #test
+        com = b"2000,5000,2000,4000,2000,5000\n" #テスト用
         self.serial.write(com)
         while True:
           if self.serial.in_waiting > 0:
@@ -227,7 +248,8 @@ class MotorControll(mp.Process):
             self.move_xyz(xpos,ypos,zpos,0,1,0)
         else:
             time.sleep(1)
-        return ypos        
+        return ypos   
+         
     ####moveToForce~()呼び出し用メソッド
     def moveToSpeed(self,xspeed=0,yspeed=0,zspeed=0):
        com = f"{xspeed},{yspeed},{zspeed}\n"
@@ -257,7 +279,7 @@ class MotorControll(mp.Process):
 
     #####niでの計測をするプロセスを立てる
     def daq_start(self):
-        self.daq_measure = DaqMeasure(self.queue,self.daq_stop_event)
+        self.daq_measure = DaqMeasure(self.queue,self.trigger_queue,self.daq_stop_event)
         self.daq_measure.start()
         print('Daq 計測開始')
 
@@ -298,13 +320,15 @@ class MotorControll(mp.Process):
                 time.sleep(0.1)   
             print("connect")
  
-
+        
             self.calibration()
             self.move_senpos()
 
             ## daq計測開始
             time.sleep(0.5)
-            self.daq_start() 
+            self.daq_start()
+            time.sleep(5) 
+            self.measure_triger()
 
             xpos = 25000
             ypos = 27000
@@ -322,6 +346,7 @@ class MotorControll(mp.Process):
                             state +=1
                     elif state == 1:
                         for i in range(10):
+                            ####for文ないではpowerが更新されないので再取得
                             power = self.queue.get()
                             zpos = self.keep_forceZ(xpos,ypos,zpos,power,3)
                         state += 1                    
@@ -383,10 +408,11 @@ class MotorControll(mp.Process):
 if __name__ == '__main__':
 
     queue = mp.Queue(3)
+    trigger_queue = mp.Queue(3)
     stop_event = mp.Event()
     daq_stop_event = mp.Event()
 
-    motor = MotorControll(queue,stop_event,daq_stop_event)
+    motor = MotorControll(queue,trigger_queue,stop_event,daq_stop_event)
 
     try:
         motor.start()
