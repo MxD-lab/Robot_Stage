@@ -55,9 +55,7 @@ class DaqMeasure(mp.Process):
         self.filename = filename
         self.queue = queue
         self.stop_event = stop_event
-        self.state = 0
         self.trigger_queue = trigger_queue
-        self.trigger_flag = False    
         super().__init__()
 
 
@@ -103,9 +101,7 @@ class DaqMeasure(mp.Process):
                                 self.queue.get()
                             self.queue.put(power)
                             # Trigger列の値を設定
-                            trigger_value = 1 if not self.trigger_queue.empty() else 0
-                            if not self.trigger_queue.empty():
-                                self.trigger_queue.get()  # トリガーを消費
+                            trigger_value = self.trigger_queue.get() if not self.trigger_queue.empty() else 0
                             for n in range(len(power)):
                                 self.data[n] = power[n,0]
                             writer.writerow([timestamp]+self.data+[trigger_value])
@@ -167,11 +163,13 @@ class MotorControll(mp.Process):
             if response == "fin Calibration":
                 break  
     
+    ##オシロ計測用トリガー信号呼び出し
     def measure_triger(self):
         self.serial.write(b"Tri\n")
+        timestamp = datetime.now().microsecond
         if self.trigger_queue.full():
             self.trigger_queue.get()
-        self.trigger_queue.put(1)
+        self.trigger_queue.put(timestamp+'us')
         print("trigger")
         while True:
           if self.serial.in_waiting > 0:
@@ -327,7 +325,8 @@ class MotorControll(mp.Process):
             ## daq計測開始
             time.sleep(0.5)
             self.daq_start()
-            time.sleep(5) 
+            ## トリガー信号
+            time.sleep(3)
             self.measure_triger()
 
             xpos = 25000
