@@ -84,7 +84,7 @@ class DaqMeasure(mp.Process):
                     samps_per_chan = 2000,
                     sample_mode=AcquisitionType.CONTINUOUS
                 )
-                # オフセット用
+                # オフセット用 ※非接触スタート前提
                 self.data_chunk = np.array(task.read(number_of_samples_per_channel=self.chunk_size),dtype=float)
                 averages = np.mean(self.data_chunk, axis=1)
                 print("測定を開始")
@@ -324,7 +324,7 @@ class MotorControll(mp.Process):
             self.calibration()
             self.move_senpos()
 
-            ## daq計測開始
+            ## daq計測開始　オフセットの関係で接触してない地点で開始すること
             time.sleep(0.5)
             self.daq_start()
             xpos = 25000
