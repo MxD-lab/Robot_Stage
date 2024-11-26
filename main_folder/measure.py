@@ -10,7 +10,7 @@ import csv
 import multiprocessing as mp
 from datetime import datetime
 
-def change_power(raw_data):
+def change_power(raw_data,ch1,ch2,ch3):
     #ロードセルから得られた電圧値をひずみ値にする
     # print(raw_data.shape)
     # print(raw_data)
@@ -31,13 +31,13 @@ def change_power(raw_data):
     
     pow = np.zeros([3,1], dtype=float) #変換後のデータ格納用
 #1ch    
-    pow[0] = (raw_data[0] - ZERO1) * CAL/ZEROCAL01
+    pow[0] = (raw_data[0] - ch1) * CAL/ZEROCAL01
 
 #2ch
-    pow[1] = (raw_data[1] - ZERO2) * CAL/ZEROCAL01
+    pow[1] = (raw_data[1] - ch2) * CAL/ZEROCAL01
 
 #3ch
-    pow[2] = (raw_data[2] - ZERO3) * CAL/ZEROCAL2
+    pow[2] = (raw_data[2] - ch3) * CAL/ZEROCAL2
 
     res = np.dot(road_mat, pow)
 
@@ -84,7 +84,9 @@ class DaqMeasure(mp.Process):
                     samps_per_chan = 2000,
                     sample_mode=AcquisitionType.CONTINUOUS
                 )
-
+                # オフセット用
+                self.data_chunk = np.array(task.read(number_of_samples_per_channel=self.chunk_size),dtype=float)
+                averages = np.mean(self.data_chunk, axis=1)
                 print("測定を開始")
                 try:
                     while not self.stop_event.is_set():
@@ -95,7 +97,7 @@ class DaqMeasure(mp.Process):
                         # データを行ごとにCSVに保存
                         for i in range(self.chunk_size):
                             self.data = [channel_data[i] for channel_data in self.data_chunk]
-                            power = change_power(self.data[0:3])
+                            power = change_power(self.data[0:3],averages[0],averages[1],averages[2])
                             #queueで共有
                             if self.queue.full():
                                 self.queue.get()
@@ -169,13 +171,13 @@ class MotorControll(mp.Process):
         timestamp = datetime.now().microsecond
         if self.trigger_queue.full():
             self.trigger_queue.get()
-        self.trigger_queue.put(timestamp+'us')
+        self.trigger_queue.put(f"{timestamp}"+'us')
         print("trigger")
         while True:
           if self.serial.in_waiting > 0:
             response = self.serial.readline().decode('utf-8', errors='ignore').strip()
             print("Arduino:", response)  
-            if response == "Done":
+            if response == "tDone":
                 break
 
     ###特例moveXYZ()呼び出し用メソッド、触覚センサを定位置に動かすメソッド
@@ -325,10 +327,6 @@ class MotorControll(mp.Process):
             ## daq計測開始
             time.sleep(0.5)
             self.daq_start()
-            ## トリガー信号
-            time.sleep(3)
-            self.measure_triger()
-
             xpos = 25000
             ypos = 27000
             zpos = 36000
@@ -338,35 +336,41 @@ class MotorControll(mp.Process):
                     res = self.res_read()
                     print(f'receive power = {power},状態は{state},arduinoの応答は{res}')
                     if state == 0:
+                        zpos = zpos + 1
+                        self.move_xyz(xpos,ypos,zpos,0,0,10)
+                        if power[2][0] >= 0.1:
+                            self.measure_triger()
+                            state += 1
+                    if state == 1:
                         if power[2][0] <= 3:
                             zpos = zpos +1
                             self.move_xyz(xpos,ypos,zpos,0,0,10)
                         else:
                             state +=1
-                    elif state == 1:
+                    elif state == 2:
                         for i in range(10):
                             ####for文ないではpowerが更新されないので再取得
                             power = self.queue.get()
                             zpos = self.keep_forceZ(xpos,ypos,zpos,power,3)
                         state += 1                    
-                    elif state == 2:
+                    elif state == 3:
                         if power[2][0] <= 5:
                             zpos = zpos +1
                             self.move_xyz(xpos,ypos,zpos,0,0,10)
                         else:
                             state +=1
-                    elif state == 3:
+                    elif state == 4:
                         for i in range(10):
                             power = self.queue.get()
                             zpos = self.keep_forceZ(xpos,ypos,zpos,power,5)
                         state += 1
-                    elif state == 4:
+                    elif state == 5:
                         if power[2][0] >= 3:
                             zpos = zpos -1
                             self.move_xyz(xpos,ypos,zpos,0,0,10)
                         else:
                             state += 1
-                    elif state == 5:
+                    elif state == 6:
                         # if power[0][0] <= 2:
                         for i in range(100):
                             xpos = xpos -1
@@ -374,21 +378,21 @@ class MotorControll(mp.Process):
                         # else:
                             #state +=1
                         state += 1
-                    elif state == 6:
+                    elif state == 7:
                         for i in range(50):
                             ypos = ypos + 1
                             self.move_xyz(xpos,ypos,zpos,0,10,0)
                         state += 1
-                    elif state ==7:
+                    elif state ==8:
                         for i in range(200):
                             ypos = ypos + 1
                             xpos = xpos - 1
                             self.move_xyz(xpos,ypos,zpos,10,10,0)
                         state +=1
-                    elif state == 8:
+                    elif state == 9:
                         self.move_xyz(25000,27000,36000,20,20,20)
                         state +=1
-                    elif state == 9:
+                    elif state == 10:
                         break  
             print('試行終了')
         except KeyboardInterrupt:
