@@ -183,8 +183,8 @@ class MotorControll(mp.Process):
     ###特例moveXYZ()呼び出し用メソッド、触覚センサを定位置に動かすメソッド
     def move_senpos(self):
         #com = b"2000,25000,2000,27000,2000,36000\n" #本来sensor付き
-        #com = b"8000,25000,8000,27000,8000,36000\n" #test
-        com = b"2000,5000,2000,4000,2000,5000\n" #テスト用
+        com = b"8000,25000,8000,27000,8000,36000\n" #test
+        #com = b"2000,5000,2000,4000,2000,5000\n" #テスト用
         self.serial.write(com)
         while True:
           if self.serial.in_waiting > 0:
@@ -342,58 +342,62 @@ class MotorControll(mp.Process):
                             self.measure_triger()
                             state += 1
                     if state == 1:
-                        if power[2][0] <= 3:
-                            zpos = zpos +1
-                            self.move_xyz(xpos,ypos,zpos,0,0,10)
-                        else:
-                            state +=1
-                    elif state == 2:
-                        for i in range(10):
-                            ####for文ないではpowerが更新されないので再取得
-                            power = self.queue.get()
-                            zpos = self.keep_forceZ(xpos,ypos,zpos,power,3)
-                        state += 1                    
-                    elif state == 3:
-                        if power[2][0] <= 5:
-                            zpos = zpos +1
-                            self.move_xyz(xpos,ypos,zpos,0,0,10)
-                        else:
-                            state +=1
-                    elif state == 4:
                         for i in range(10):
                             power = self.queue.get()
-                            zpos = self.keep_forceZ(xpos,ypos,zpos,power,5)
+                            zpos = self.keep_forceZ(xpos,ypos,zpos,power,0.1)
                         state += 1
-                    elif state == 5:
-                        if power[2][0] >= 3:
-                            zpos = zpos -1
-                            self.move_xyz(xpos,ypos,zpos,0,0,10)
-                        else:
-                            state += 1
-                    elif state == 6:
-                        # if power[0][0] <= 2:
-                        for i in range(100):
-                            xpos = xpos -1
-                            self.move_xyz(xpos,ypos,zpos,10,0,0)
-                        # else:
-                            #state +=1
-                        state += 1
-                    elif state == 7:
-                        for i in range(50):
-                            ypos = ypos + 1
-                            self.move_xyz(xpos,ypos,zpos,0,10,0)
-                        state += 1
-                    elif state ==8:
-                        for i in range(200):
-                            ypos = ypos + 1
-                            xpos = xpos - 1
-                            self.move_xyz(xpos,ypos,zpos,10,10,0)
-                        state +=1
-                    elif state == 9:
+                    if state == 2:
                         self.move_xyz(25000,27000,36000,20,20,20)
-                        state +=1
-                    elif state == 10:
-                        break  
+                        state += 1
+                    if state == 3:
+                        break
+                    # elif state == 2:
+                    #     for i in range(10):
+                    #         ####for文ないではpowerが更新されないので再取得
+                    #         power = self.queue.get()
+                    #         zpos = self.keep_forceZ(xpos,ypos,zpos,power,3)
+                    #     state += 1                    
+                    # elif state == 3:
+                    #     if power[2][0] <= 5:
+                    #         zpos = zpos +1
+                    #         self.move_xyz(xpos,ypos,zpos,0,0,10)
+                    #     else:
+                    #         state +=1
+                    # elif state == 4:
+                    #     for i in range(10):
+                    #         power = self.queue.get()
+                    #         zpos = self.keep_forceZ(xpos,ypos,zpos,power,5)
+                    #     state += 1
+                    # elif state == 5:
+                    #     if power[2][0] >= 3:
+                    #         zpos = zpos -1
+                    #         self.move_xyz(xpos,ypos,zpos,0,0,10)
+                    #     else:
+                    #         state += 1
+                    # elif state == 6:
+                    #     # if power[0][0] <= 2:
+                    #     for i in range(100):
+                    #         xpos = xpos -1
+                    #         self.move_xyz(xpos,ypos,zpos,10,0,0)
+                    #     # else:
+                    #         #state +=1
+                    #     state += 1
+                    # elif state == 7:
+                    #     for i in range(50):
+                    #         ypos = ypos + 1
+                    #         self.move_xyz(xpos,ypos,zpos,0,10,0)
+                    #     state += 1
+                    # elif state ==8:
+                    #     for i in range(200):
+                    #         ypos = ypos + 1
+                    #         xpos = xpos - 1
+                    #         self.move_xyz(xpos,ypos,zpos,10,10,0)
+                    #     state +=1
+                    # elif state == 9:
+                    #     self.move_xyz(25000,27000,36000,20,20,20)
+                    #     state +=1
+                    # elif state == 10:
+                    #     break  
             print('試行終了')
         except KeyboardInterrupt:
             self.move_senpos()
