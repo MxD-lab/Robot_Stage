@@ -12,15 +12,6 @@ from datetime import datetime
 
 def change_power(raw_data,ch1,ch2,ch3):
     #ロードセルから得られた電圧値をひずみ値にする
-    # print(raw_data.shape)
-    # print(raw_data)
-    # print(raw_data[0])
-    # print(raw_data[1])
-    # print(raw_data[2])
-    # ZERO01 =
-    ZERO1 = 0.034#プロット見て手打ちでゼロ校正,chごとに違う
-    ZERO2 = 0.195
-    ZERO3 = 0.450
     CAL = 500#με
     ZEROCAL01 = 5#V
     ZEROCAL2 = 2.5
@@ -279,7 +270,7 @@ class MotorControll(mp.Process):
 
     #####niでの計測をするプロセスを立てる
     def daq_start(self):
-        self.daq_measure = DaqMeasure(self.queue,self.trigger_queue,self.daq_stop_event)
+        self.daq_measure = DaqMeasure(self.queue,self.trigger_queue,self.daq_stop_event,chunk_size=20)
         self.daq_measure.start()
         print('Daq 計測開始')
 
@@ -337,19 +328,30 @@ class MotorControll(mp.Process):
                     print(f'receive power = {power},状態は{state},arduinoの応答は{res}')
                     if state == 0:
                         zpos = zpos + 1
-                        self.move_xyz(xpos,ypos,zpos,0,0,10)
-                        if power[2][0] >= 0.1:
+                        self.move_xyz(xpos,ypos,zpos,0,0,20)
+                        if power[2][0] >= 1:
                             self.measure_triger()
                             state += 1
                     if state == 1:
-                        for i in range(10):
-                            power = self.queue.get()
-                            zpos = self.keep_forceZ(xpos,ypos,zpos,power,0.1)
-                        state += 1
+                        if power[2][0] <= 3:
+                            zpos = zpos + 1
+                            self.move_xyz(xpos,ypos,zpos,0,0,20)
+                        else:                        
+                            state += 1
                     if state == 2:
-                        self.move_xyz(25000,27000,36000,20,20,20)
+                        for i in range(50):
+                            xpos = xpos -1
+                            self.move_xyz(xpos,ypos,zpos,100,0,0)
                         state += 1
                     if state == 3:
+                        for i in range(50):
+                            xpos = xpos +1
+                            self.move_xyz(xpos,ypos,zpos,100,0,0)
+                        state += 1
+                    if state == 4:
+                        self.move_xyz(25000,27000,36000,50,50,50)
+                        state += 1
+                    if state == 5:
                         break
                     # elif state == 2:
                     #     for i in range(10):
