@@ -173,9 +173,9 @@ class MotorControll(mp.Process):
 
     ###特例moveXYZ()呼び出し用メソッド、触覚センサを定位置に動かすメソッド
     def move_senpos(self):
-        #com = b"2000,25000,2000,27000,2000,36000\n" #本来sensor付き
-        com = b"8000,25000,8000,27000,8000,36000\n" #test
-        #com = b"2000,5000,2000,4000,2000,5000\n" #テスト用
+        #com = b"8000,25000,8000,29000,8000,36000\n" #天板の高さ
+        #com = b"8000,25000,8000,29000,8000,35000\n" #ゴム(sozai)の高さ
+        com = b"8000,25000,8000,29000,8000,31000\n" #スポンジ(sozai)の高さ
         self.serial.write(com)
         while True:
           if self.serial.in_waiting > 0:
@@ -319,8 +319,10 @@ class MotorControll(mp.Process):
             time.sleep(0.5)
             self.daq_start()
             xpos = 25000
-            ypos = 27000
-            zpos = 36000
+            ypos = 29000
+            #zpos = 36000 #天板
+            #zpos = 35000 #ゴム
+            zpos = 31000 #スポンジ
             while not self.stop_event.is_set():
                 if not self.queue.empty():
                     power = self.queue.get()
@@ -330,26 +332,32 @@ class MotorControll(mp.Process):
                         zpos = zpos + 1
                         self.move_xyz(xpos,ypos,zpos,0,0,20)
                         if power[2][0] >= 1:
-                            self.measure_triger()
                             state += 1
                     if state == 1:
-                        if power[2][0] <= 3:
-                            zpos = zpos + 1
-                            self.move_xyz(xpos,ypos,zpos,0,0,20)
-                        else:                        
-                            state += 1
+                        #およそ5cm移動の往復を2回
+                        for i in range(2):
+                            xpos = xpos + 1000
+                            self.move_xyz(xpos,ypos,zpos,1000,0,0)
+                            xpos = xpos - 1000
+                            self.move_xyz(xpos,ypos,zpos,1000,0,0)
+                        self.measure_triger()                           
+                        state += 1
                     if state == 2:
-                        for i in range(50):
-                            xpos = xpos -1
-                            self.move_xyz(xpos,ypos,zpos,100,0,0)
+                        #およそ5cm移動の往復を2回
+                        for i in range(2):
+                            ypos = ypos + 1000
+                            self.move_xyz(xpos,ypos,zpos,0,1000,0)
+                            ypos = ypos - 1000
+                            self.move_xyz(xpos,ypos,zpos,0,1000,0)
                         state += 1
                     if state == 3:
-                        for i in range(50):
-                            xpos = xpos +1
-                            self.move_xyz(xpos,ypos,zpos,100,0,0)
+                        #self.move_xyz(25000,29000,36000,50,50,50) #天板
+                        #self.move_xyz(25000,29000,35000,50,50,50) #ゴム
+                        self.move_xyz(25000,29000,31000,50,50,50) #スポンジ
                         state += 1
                     if state == 4:
-                        self.move_xyz(25000,27000,36000,50,50,50)
+                        #次回のキャリブレーションを短くするための移動
+                        self.move_xyz(3000,3000,3000,2000,2000,2000)
                         state += 1
                     if state == 5:
                         break
