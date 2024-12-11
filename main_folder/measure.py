@@ -173,9 +173,9 @@ class MotorControll(mp.Process):
 
     ###特例moveXYZ()呼び出し用メソッド、触覚センサを定位置に動かすメソッド
     def move_senpos(self):
-        #com = b"8000,25000,8000,29000,8000,36000\n" #天板の高さ
+        com = b"8000,25000,8000,29000,8000,36000\n" #天板の高さ
         #com = b"8000,25000,8000,29000,8000,35000\n" #ゴム(sozai)の高さ
-        com = b"8000,25000,8000,29000,8000,31000\n" #スポンジ(sozai)の高さ
+        #com = b"8000,25000,8000,29000,8000,31000\n" #スポンジ(sozai)の高さ
         self.serial.write(com)
         while True:
           if self.serial.in_waiting > 0:
@@ -320,9 +320,9 @@ class MotorControll(mp.Process):
             self.daq_start()
             xpos = 25000
             ypos = 29000
-            #zpos = 36000 #天板
+            zpos = 36000 #天板
             #zpos = 35000 #ゴム
-            zpos = 31000 #スポンジ
+            #zpos = 31000 #スポンジ
             while not self.stop_event.is_set():
                 if not self.queue.empty():
                     power = self.queue.get()
@@ -351,9 +351,10 @@ class MotorControll(mp.Process):
                             self.move_xyz(xpos,ypos,zpos,0,1000,0)
                         state += 1
                     if state == 3:
-                        #self.move_xyz(25000,29000,36000,50,50,50) #天板
+                        
+                        self.move_xyz(25000,29000,36000,50,50,50) #天板
                         #self.move_xyz(25000,29000,35000,50,50,50) #ゴム
-                        self.move_xyz(25000,29000,31000,50,50,50) #スポンジ
+                        #self.move_xyz(25000,29000,31000,50,50,50) #スポンジ
                         state += 1
                     if state == 4:
                         #次回のキャリブレーションを短くするための移動
