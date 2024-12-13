@@ -334,33 +334,23 @@ class MotorControll(mp.Process):
                         if power[2][0] >= 1:
                             state += 1
                     if state == 1:
-                        #およそ5cm移動の往復を2回
-                        for i in range(2):
-                            xpos = xpos + 1000
-                            self.move_xyz(xpos,ypos,zpos,1000,0,0)
-                            xpos = xpos - 1000
-                            self.move_xyz(xpos,ypos,zpos,1000,0,0)
-                        self.measure_triger()                           
+                        ypos = ypos + 1000
+                        self.move_xyz(xpos,ypos,zpos,0,2000,0)
+                        ypos = ypos - 1000
+                        self.move_xyz(xpos,ypos,zpos,0,2000,0)                        
+                        #およそ1cm移動の往復を2回                                                  
                         state += 1
                     if state == 2:
-                        #およそ5cm移動の往復を2回
-                        for i in range(2):
-                            ypos = ypos + 1000
-                            self.move_xyz(xpos,ypos,zpos,0,1000,0)
-                            ypos = ypos - 1000
-                            self.move_xyz(xpos,ypos,zpos,0,1000,0)
-                        state += 1
-                    if state == 3:
-                        
                         self.move_xyz(25000,29000,36000,50,50,50) #天板
+                        self.measure_triger() 
                         #self.move_xyz(25000,29000,35000,50,50,50) #ゴム
                         #self.move_xyz(25000,29000,31000,50,50,50) #スポンジ
                         state += 1
-                    if state == 4:
+                    if state == 3:
                         #次回のキャリブレーションを短くするための移動
                         self.move_xyz(3000,3000,3000,2000,2000,2000)
                         state += 1
-                    if state == 5:
+                    if state == 4:
                         break
                     # elif state == 2:
                     #     for i in range(10):
@@ -411,7 +401,7 @@ class MotorControll(mp.Process):
                     #     break  
             print('試行終了')
         except KeyboardInterrupt:
-            self.move_senpos()
+            #self.move_senpos()
             self.close()
             print('通信終了')
         finally:
