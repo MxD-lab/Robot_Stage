@@ -334,15 +334,16 @@ class MotorControll(mp.Process):
                         if power[2][0] >= 1:
                             state += 1
                     if state == 1:
+                        self.measure_triger()
                         ypos = ypos + 1000
                         self.move_xyz(xpos,ypos,zpos,0,2000,0)
                         ypos = ypos - 1000
-                        self.move_xyz(xpos,ypos,zpos,0,2000,0)                        
+                        self.move_xyz(xpos,ypos,zpos,0,2000,0) 
+                                                
                         #およそ1cm移動の往復を2回                                                  
                         state += 1
                     if state == 2:
                         self.move_xyz(25000,29000,36000,50,50,50) #天板
-                        self.measure_triger() 
                         #self.move_xyz(25000,29000,35000,50,50,50) #ゴム
                         #self.move_xyz(25000,29000,31000,50,50,50) #スポンジ
                         state += 1
