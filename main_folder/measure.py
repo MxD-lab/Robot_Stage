@@ -173,9 +173,9 @@ class MotorControll(mp.Process):
 
     ###特例moveXYZ()呼び出し用メソッド、触覚センサを定位置に動かすメソッド
     def move_senpos(self):
-        com = b"8000,25000,8000,29000,8000,36000\n" #天板の高さ
-        #com = b"8000,25000,8000,29000,8000,35000\n" #ゴム(sozai)の高さ
-        #com = b"8000,25000,8000,29000,8000,31000\n" #スポンジ(sozai)の高さ
+        com = b"8000,25000,8000,29000,8000,36000,0\n" #天板の高さ
+        #com = b"8000,25000,8000,29000,8000,35000,0\n" #ゴム(sozai)の高さ
+        #com = b"8000,25000,8000,29000,8000,31000,0\n" #スポンジ(sozai)の高さ
         self.serial.write(com)
         while True:
           if self.serial.in_waiting > 0:
@@ -199,8 +199,8 @@ class MotorControll(mp.Process):
 
     
     ###moveXYZ()呼び出し用メソッド
-    def move_xyz(self,x,y,z,xspeed=1000,yspeed=1000,zspeed=1000):
-        com = f"{xspeed},{x},{yspeed},{y},{zspeed},{z}\n"
+    def move_xyz(self,zf,x,y,z,xspeed=1000,yspeed=1000,zspeed=1000):
+        com = f"{xspeed},{x},{yspeed},{y},{zspeed},{z},{zf}\n"
         self.serial.write(com.encode())
         while True:
           if self.serial.in_waiting > 0:
@@ -330,26 +330,26 @@ class MotorControll(mp.Process):
                     print(f'receive power = {power},状態は{state},arduinoの応答は{res}')
                     if state == 0:
                         zpos = zpos + 1
-                        self.move_xyz(xpos,ypos,zpos,0,0,20)
-                        if power[2][0] >= 1:
+                        self.move_xyz(power[2][0],xpos,ypos,zpos,0,0,20)
+                        if power[2][0] >= 0.5:
                             state += 1
                     if state == 1:
                         self.measure_triger()
                         ypos = ypos + 1000
-                        self.move_xyz(xpos,ypos,zpos,0,2000,0)
+                        self.move_xyz(power[2][0],xpos,ypos,zpos,0,2000,0)
                         ypos = ypos - 1000
-                        self.move_xyz(xpos,ypos,zpos,0,2000,0) 
+                        self.move_xyz(power[2][0],xpos,ypos,zpos,0,2000,0) 
                                                 
                         #およそ1cm移動の往復を2回                                                  
                         state += 1
                     if state == 2:
-                        self.move_xyz(25000,29000,36000,50,50,50) #天板
+                        self.move_xyz(power[2][0],25000,29000,36000,50,50,50) #天板
                         #self.move_xyz(25000,29000,35000,50,50,50) #ゴム
                         #self.move_xyz(25000,29000,31000,50,50,50) #スポンジ
                         state += 1
                     if state == 3:
                         #次回のキャリブレーションを短くするための移動
-                        self.move_xyz(3000,3000,3000,2000,2000,2000)
+                        self.move_xyz(power[2][0],3000,3000,3000,2000,2000,2000)
                         state += 1
                     if state == 4:
                         break

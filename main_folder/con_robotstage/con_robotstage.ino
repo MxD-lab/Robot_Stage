@@ -52,6 +52,7 @@ long getysp;
 long getypos;
 long getzsp;
 long getzpos;
+long getzf;
 
 bool serial_flag1 = false;
 bool serial_flag2 = false;
@@ -166,9 +167,12 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
   stepper_x.setSpeed(x_speed);
   stepper_y.setSpeed(y_speed);
   stepper_z.setSpeed(z_speed);
-
-  // 1ステップずつ動作を確認
-  if (pmoving) {
+  if(zforce >= 5){
+    while(stepper_z.currentPosition()<=30000){
+    stepper_z.moveTo(30000);
+    stepper_z.setSpeed(1000);
+    }
+  }else if (pmoving) {
     if (stepper_x.currentPosition() != x_position) {
       stepper_x.runSpeedToPosition();
       }
@@ -199,8 +203,8 @@ void moveXYZ(long x_speed,long x_position,long y_speed,long y_position,long z_sp
   
 void trigger(){
   digitalWrite(Tri,HIGH);
-  Serial.println("Done");
-  delay(100);
+  Serial.println("tDone");
+  delay(200);
   digitalWrite(Tri,LOW);
   }
   
@@ -260,26 +264,29 @@ void SerialRead(){
       if(input == "Tri"){
         trigger();
         }  
-      else if(ReceiveDataNum(input)==5){
+      else if(ReceiveDataNum(input)==6){
         STOP = false;
         int indexXs = input.indexOf(',');
         int indexXp = input.indexOf(',',indexXs+1);
         int indexYs = input.indexOf(',',indexXp+1);
         int indexYp = input.indexOf(',',indexYs+1);
         int indexZs = input.indexOf(',',indexYp+1);
+        int indexZp = input.indexOf(',',indexZs+1);
   
         long xsp = input.substring(0,indexXs).toInt();
         long xpos = input.substring(indexXs+1,indexXp).toInt();
         long ysp = input.substring(indexXp+1,indexYs).toInt();
         long ypos = input.substring(indexYs+1,indexYp).toInt();
         long zsp = input.substring(indexYp+1,indexZs).toInt();
-        long zpos = input.substring(indexZs+1).toInt();
+        long zpos = input.substring(indexZs+1,indexZp).toInt();
+        long zf = input.substring(indexZp+1).toInt();
         getxsp = xsp;
         getxpos = xpos;
         getysp = ysp;
         getypos = ypos;
         getzsp = zsp;
         getzpos = zpos;
+        getzf = zf;
         pmoving = true;
         fmoving = false;
         //moveXYZ(xsp,xpos,ysp,ypos,zsp,zpos,0);           
@@ -358,7 +365,7 @@ void loop() {
       moveToForceZ(setSpz);
       }
     if(pmoving){
-      moveXYZ(getxsp,getxpos,getysp,getypos,getzsp,getzpos,0);
+      moveXYZ(getxsp,getxpos,getysp,getypos,getzsp,getzpos,getzf);
       }
   }else{
     Stop();
